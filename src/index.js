@@ -38,8 +38,16 @@ const pointOnPath = (path, t) => {
     return path.getPointAtLength(t);
 };
 
-const Dot = ({ x, y }) => {
-    return <circle className="dot" r="13" transform={`translate(${x},${y})`} />;
+const Dot = ({ x, y, id }) => {
+    return (
+        <circle
+            key={id}
+            id={id}
+            className="dot"
+            r="13"
+            transform={`translate(${x},${y})`}
+        />
+    );
 };
 
 const Hazzard = ({ x, y, attributes }) => {
@@ -51,12 +59,12 @@ const Hazzard = ({ x, y, attributes }) => {
 const updateDotPos = paths => dot => {
     const path = paths[dot.pathIndex];
     const speed =
-        dot.speed === standardSpeed
+        dot.speed === standardSpeed || dot.hazzard
             ? dot.speed
             : dot.speed < standardSpeed
                 ? Math.min(dot.speed * 1.2, standardSpeed)
                 : Math.max(dot.speed * 0.8, standardSpeed);
-    console.log(dot);
+
     return {
         ...dot,
         speed,
@@ -84,7 +92,7 @@ const distance = (pointA, pointB) => {
 };
 
 const findNearest = (target, pointOptions) => {
-    return pointOptions.findIndex(point => distance(point, target) < 0.5);
+    return pointOptions.findIndex(point => distance(point, target) < 20);
 };
 
 const resolveCollisions = (dots, hazzards = []) => {
@@ -92,12 +100,16 @@ const resolveCollisions = (dots, hazzards = []) => {
         const index = findNearest(h, dots);
 
         if (index !== -1) {
-            dots = R.set(R.lensProp(index), h.affect, dots);
+            dots = R.over(
+                R.lensProp(index),
+                d => ({ ...d, ...h.affect }),
+                dots
+            );
             return hs;
         }
         return [...hs, h];
     }, []);
-
+    console.log(dots);
     return { hazzards: h, dots };
 };
 
@@ -116,7 +128,7 @@ const hazzardAttributes = {
     affects: {
         speedUp: { speed: standardSpeed * 2 },
         slowDown: { speed: standardSpeed / 2 },
-        shield: true
+        shield: 1000
     }
 };
 
@@ -134,6 +146,7 @@ class App extends React.Component {
         run: false,
         dots: [
             {
+                id: 1,
                 pathIndex: 0,
                 x: 480,
                 y: 200,
@@ -141,6 +154,7 @@ class App extends React.Component {
                 speed: standardSpeed
             },
             {
+                id: 2,
                 pathIndex: 1,
                 x: 495,
                 y: 215,
@@ -148,6 +162,7 @@ class App extends React.Component {
                 speed: standardSpeed
             },
             {
+                id: 3,
                 pathIndex: 2,
                 x: 465,
                 y: 185,
@@ -157,6 +172,7 @@ class App extends React.Component {
         ],
         hazzards: [
             {
+                hazzard: true,
                 target: hazzardAttributes.target.homing,
                 homingTarget: 0,
                 pathIndex: -1,
@@ -187,6 +203,7 @@ class App extends React.Component {
                     hazzards: _.map(s.hazzards, updateTargeting(s.dots))
                 }),
                 s => ({ ...s, ...resolveCollisions(s.dots, s.hazzards) }),
+                console.ident,
                 s => ({
                     ...s,
                     dots: _.map(s.dots, this.updateDotPos),
