@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import _ from 'lodash';
+import fp from 'lodash/fp';
 import R from 'ramda';
 
 import './styles.css';
@@ -43,22 +44,35 @@ const Dot = ({ x, y }) => {
 
 const Hazzard = ({ x, y, attributes }) => {
     return (
-        <circle className="pulse" r="8" transform={`translate(${x},${y})`} />
+        <circle className="hazzard" r="8" transform={`translate(${x},${y})`} />
     );
 };
 
 const updateDotPos = paths => dot => {
     const path = paths[dot.pathIndex];
+    const speed =
+        dot.speed === standardSpeed
+            ? dot.speed
+            : dot.speed < standardSpeed
+                ? Math.min(dot.speed * 1.2, standardSpeed)
+                : Math.max(dot.speed * 0.8, standardSpeed);
+    console.log(dot);
     return {
         ...dot,
+        speed,
         t: R.ifElse(
             v => v > path.getTotalLength(),
             v => v % path.getTotalLength(),
             v => v
-        )(dot.t + dot.speed),
+        )(dot.t + speed),
         ..._.pick(pointOnPath(path, dot.t), ['x', 'y'])
     };
 };
+
+const updateTargeting = dots => hazzard =>
+    hazzard.target === hazzardAttributes.target.homing
+        ? { ...hazzard, pathIndex: dots[hazzard.homingTarget].pathIndex }
+        : hazzard;
 
 const standardSpeed = 5; //0.002; // 5
 
@@ -69,23 +83,41 @@ const distance = (pointA, pointB) => {
     return Math.sqrt(a * a + b * b);
 };
 
+const findNearest = (target, pointOptions) => {
+    return pointOptions.findIndex(point => distance(point, target) < 0.5);
+};
+
+const resolveCollisions = (dots, hazzards = []) => {
+    const h = hazzards.reduce((hs, h) => {
+        const index = findNearest(h, dots);
+
+        if (index !== -1) {
+            dots = R.set(R.lensProp(index), h.affect, dots);
+            return hs;
+        }
+        return [...hs, h];
+    }, []);
+
+    return { hazzards: h, dots };
+};
+
 const hazzardAttributes = {
     speed: {
-        static: () => ({ speed: 0 }),
-        slow: () => ({ speed: standardSpeed / 2 }),
-        normal: () => ({ speed: standardSpeed / 2 }),
-        fast: () => ({ speed: standardSpeed * 2 })
+        static: 0,
+        slow: standardSpeed / 2,
+        normal: standardSpeed / 2,
+        fast: standardSpeed * 2
     },
     target: {
-        everyone: () => ({ target: null }),
-        me: () => ({ target: 0 }),
-        anyone: () => ({ target: -1 })
+        homing: 1,
+        everyone: 2,
+        anyone: 3
     },
     affects: {
-        speed: (amount = 1.5) => speed => speed * amount,
-        shield: () => ({ shielded: true })
-    },
-    homing: target => () => ({ pathIndex: R.view(target).pathIndex })
+        speedUp: { speed: standardSpeed * 2 },
+        slowDown: { speed: standardSpeed / 2 },
+        shield: true
+    }
 };
 
 class App extends React.Component {
@@ -123,13 +155,45 @@ class App extends React.Component {
                 speed: standardSpeed
             }
         ],
-        hazzards: []
+        hazzards: [
+            {
+                target: hazzardAttributes.target.homing,
+                homingTarget: 0,
+                pathIndex: -1,
+                t: 100,
+                x: 622,
+                y: 330,
+                affect: hazzardAttributes.affects.slowDown,
+                speed: hazzardAttributes.speed.fast
+            }
+        ]
     };
 
     tick = () => {
-        this.setState(({ dots }) => ({
-            dots: _.map(this.state.dots, this.updateDotPos)
-        }));
+        // const older = ({ dots, hazzards }) => {
+        //     hazzards = _.map(hazzards, updateTargeting(dots));
+        //     const { dots, hazzards } = resolveCollisions(dots, hazzards);
+
+        //     return {
+        //         dots: _.map(dots, this.updateDotPos),
+        //         hazzards: _.map(hazzards, this.updateDotPos)
+        //     };
+        // };
+
+        this.setState(
+            R.pipe(
+                s => ({
+                    ...s,
+                    hazzards: _.map(s.hazzards, updateTargeting(s.dots))
+                }),
+                s => ({ ...s, ...resolveCollisions(s.dots, s.hazzards) }),
+                s => ({
+                    ...s,
+                    dots: _.map(s.dots, this.updateDotPos),
+                    hazzards: _.map(s.hazzards, this.updateDotPos)
+                })
+            )
+        );
         this.state.run && setTimeout(this.tick, 16);
     };
 
@@ -167,12 +231,10 @@ class App extends React.Component {
         if (dots[0].pathIndex !== this.state.dots[0].pathIndex) {
             const { pathIndex, x, y } = this.state.dots[0];
             const setgments = this.pathSegments[pathIndex];
-            console.log(this.state.dots[0], this.pathSegments);
             const nearestSegment = setgments.sort(
                 (a, b) =>
                     distance(a.point, { x, y }) - distance(b.point, { x, y })
             )[0];
-            console.log(nearestSegment);
             this.setState(R.set(this.dotLense(0, 't'), nearestSegment.length));
         }
     }
@@ -223,7 +285,7 @@ class App extends React.Component {
                         d="M 600 400 Q 590 100 500 300 Q 350 630 200 300 Q 120 100 100 400 Q 120 480 350 500 Q 580 480 600 400"
                     />
                     {_.map(this.state.dots, Dot)}
-                    <Hazzard x={622} y={330} />
+                    {_.map(this.state.hazzards, Hazzard)}
                 </svg>
                 <details>
                     <summary>Game State</summary>
