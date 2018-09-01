@@ -47,7 +47,7 @@ const updateDotPos = paths => dot => {
         ...dot,
         t: R.ifElse(
             v => v > path.getTotalLength(),
-            v => v % path.getTotalLength(),
+            v => (console.log('lap', Date.now()), v % path.getTotalLength()),
             v => v
         )(dot.t + dot.speed),
         ..._.pick(pointOnPath(path, dot.t), ['x', 'y'])
@@ -56,7 +56,12 @@ const updateDotPos = paths => dot => {
 
 const standardSpeed = 5; //0.002; // 5
 
-const pathDeltas = [15, 15, -30];
+const distance = (pointA, pointB) => {
+    var a = pointA.x - pointB.x;
+    var b = pointA.y - pointB.y;
+
+    return Math.sqrt(a * a + b * b);
+};
 
 class App extends React.Component {
     path = React.createRef();
@@ -65,37 +70,8 @@ class App extends React.Component {
 
     dotLense = (...args) => R.lensPath(['dots', ...args]);
 
-    cyclePathIndex = (dotIndex = 0) => {
-        this.setState(s => {
-            const paths = [
-                this.path.current.getTotalLength(),
-                this.path2.current.getTotalLength(),
-                this.path3.current.getTotalLength()
-            ];
-            const { pathIndex, t, ...dot } = s.dots[dotIndex];
-
-            const currentPathLength = paths[pathIndex];
-            const percent = t / currentPathLength;
-            const newPathIndex = cycleThree.inc(pathIndex);
-            const newPathLength = paths[newPathIndex];
-
-            const newDot = {
-                // x: dot.x + pathDeltas[newPathIndex],
-                // y: dot.y + pathDeltas[newPathIndex],
-                ...dot,
-                pathIndex: newPathIndex,
-                t: percent * newPathLength
-            };
-
-            console.log(
-                `${t}/${currentPathLength} = ${percent}. ${percent} * ${newPathLength} = ${percent *
-                    newPathLength}`
-            );
-
-            const updatedPathIndex = R.set(this.dotLense(dotIndex), newDot, s);
-            return updatedPathIndex;
-        });
-    };
+    cyclePathIndex = (dotIndex = 0, func) =>
+        this.setState(R.over(this.dotLense(dotIndex, 'pathIndex'), func));
 
     state = {
         run: false,
@@ -106,21 +82,21 @@ class App extends React.Component {
                 y: 200,
                 t: 0,
                 speed: standardSpeed
-            },
-            {
-                pathIndex: 1,
-                x: 495,
-                y: 215,
-                t: 0,
-                speed: standardSpeed
-            },
-            {
-                pathIndex: 2,
-                x: 465,
-                y: 185,
-                t: 0,
-                speed: standardSpeed
             }
+            // {
+            //     pathIndex: 1,
+            //     x: 495,
+            //     y: 215,
+            //     t: 0,
+            //     speed: standardSpeed
+            // },
+            // {
+            //     pathIndex: 2,
+            //     x: 465,
+            //     y: 185,
+            //     t: 0,
+            //     speed: standardSpeed
+            // }
         ]
     };
 
@@ -140,11 +116,38 @@ class App extends React.Component {
             this.path3.current
         ]);
 
+        this.paths = [
+            this.path.current,
+            this.path2.current,
+            this.path3.current
+        ];
+
+        this.pathSegments = this.paths.map(path =>
+            Array.from(
+                { length: path.getTotalLength() / standardSpeed },
+                (_, i) => ({
+                    point: path.getPointAtLength(i * standardSpeed),
+                    length: i * standardSpeed
+                })
+            )
+        );
+
         this.tick();
     }
 
-    componentDidUpdate(_, { run }) {
+    componentDidUpdate(_, { run, dots }) {
         if (this.state.run && !run) this.tick();
+        if (dots[0].pathIndex !== this.state.dots[0].pathIndex) {
+            const { pathIndex, x, y } = this.state.dots[0];
+            const setgments = this.pathSegments[pathIndex];
+            console.log(this.state.dots[0], this.pathSegments);
+            const nearestSegment = setgments.sort(
+                (a, b) =>
+                    distance(a.point, { x, y }) - distance(b.point, { x, y })
+            )[0];
+            console.log(nearestSegment);
+            this.setState(R.set(this.dotLense(0, 't'), nearestSegment.length));
+        }
     }
 
     set = new Proxy(this, {
@@ -157,44 +160,41 @@ class App extends React.Component {
         get(target, name) {
             return updater =>
                 target.setState(s => ({
-                    [name]: console.ident(updater(s[name]))
+                    [name]: updater(s[name])
                 }));
         }
     });
 
     render() {
         return (
-            <div className="App">
+            <div
+                className="App"
+                tabIndex="0"
+                onKeyDown={({ key, ...e }) =>
+                    this.cyclePathIndex(
+                        0,
+                        key === 'ArrowRight' ? cycleThree.inc : cycleThree.dec
+                    )
+                }
+            >
                 <button onClick={() => this.update.run(v => !v)}>Run</button>
                 <button onClick={() => this.tick()}>>></button>
-                <svg
-                    width="960"
-                    height="500"
-                    onClick={() => this.cyclePathIndex()}
-                >
+                <svg width="960" height="600">
                     <path
                         stroke="blue"
                         ref={this.path}
-                        d=" M480,200c100,0,0,250,100,200s0,-250,100,-300s350,100,100,200s-350,100,-600,0s0,-250,100,-200s0,250,100,300s0,-200,100,-200"
+                        d="M 630 400 Q 600 70 500 250 Q 350 600 200 250 Q 100 70 80 400 Q 80 510 350 525 Q 600 510 630 400 Z"
                     />
                     <path
                         stroke="red"
                         ref={this.path2}
-                        d=" M495,215c100,0,0,250,100,200s0,-250,100,-300s350,100,100,200s-350,100,-600,0s0,-250,100,-200s0,250,100,300s0,-200,100,-200"
+                        d="M 650 400 Q 600 0 470 250 Q 350 500 230 250 Q 100 0 50 400 Q 50 550 350 550 Q 650 550 650 400 Z"
                     />
                     <path
                         stroke="green"
                         ref={this.path3}
-                        d=" M465,185c100,0,0,250,100,200s0,-250,100,-300s350,100,100,200s-350,100,-600,0s0,-250,100,-200s0,250,100,300s0,-200,100,-200"
+                        d="M 600 400 Q 590 100 500 300 Q 350 630 200 300 Q 120 100 100 400 Q 120 480 350 500 Q 580 480 600 400"
                     />
-
-                    <circle r="4" transform="translate(480,200)" />
-                    <circle r="4" transform="translate(580,400)" />
-                    <circle r="4" transform="translate(680,100)" />
-                    <circle r="4" transform="translate(780,300)" />
-                    <circle r="4" transform="translate(180,300)" />
-                    <circle r="4" transform="translate(280,100)" />
-                    <circle r="4" transform="translate(380,400)" />
                     {_.map(this.state.dots, Dot)}
                 </svg>
                 <details>
@@ -212,7 +212,10 @@ class App extends React.Component {
 const rootElement = document.getElementById('root');
 ReactDOM.render(<App />, rootElement);
 
-/*
+// M 650 400 Q 600 0 450 250 Q 350 550 250 250 Q 100 0 50 400 Q 50 550 350 550 Q 650 550 650 400 Z
+// M 600 400 Q 600 50 500 250 Q 350 600 200 250 Q 100 50 100 400 Q 100 500 350 500 Q 600 500 600 400 Z /*
+
+/* 
 Initial Path Setup 
 <path
                         stroke="blue"
