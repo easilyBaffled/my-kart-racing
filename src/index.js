@@ -34,23 +34,29 @@ const cycleOne = cycleNumber(0, 1);
 
 const pointOnPath = (path, t) => {
     var l = path.getTotalLength();
-    return path.getPointAtLength(t * l);
+    return path.getPointAtLength(t);
 };
 
 const Dot = ({ x, y }) => {
-    return <circle r="13" transform={`translate(${x},${y})`} />;
+    return <circle className="dot" r="13" transform={`translate(${x},${y})`} />;
 };
 
 const updateDotPos = paths => dot => {
     const path = paths[dot.pathIndex];
     return {
         ...dot,
-        t: cycleOne.inc(dot.t, dot.speed),
+        t: R.ifElse(
+            v => v > path.getTotalLength(),
+            v => v % path.getTotalLength(),
+            v => v
+        )(dot.t + dot.speed),
         ..._.pick(pointOnPath(path, dot.t), ['x', 'y'])
     };
 };
 
-const standardSpeed = 0.002; // 5
+const standardSpeed = 5; //0.002; // 5
+
+const pathDeltas = [15, 15, -30];
 
 class App extends React.Component {
     path = React.createRef();
@@ -59,12 +65,40 @@ class App extends React.Component {
 
     dotLense = (...args) => R.lensPath(['dots', ...args]);
 
-    cyclePathIndex = (dotIndex = 0) =>
-        this.setState(
-            R.over(this.dotLense(dotIndex, 'pathIndex'), cycleThree.inc)
-        );
+    cyclePathIndex = (dotIndex = 0) => {
+        this.setState(s => {
+            const paths = [
+                this.path.current.getTotalLength(),
+                this.path2.current.getTotalLength(),
+                this.path3.current.getTotalLength()
+            ];
+            const { pathIndex, t, ...dot } = s.dots[dotIndex];
+
+            const currentPathLength = paths[pathIndex];
+            const percent = t / currentPathLength;
+            const newPathIndex = cycleThree.inc(pathIndex);
+            const newPathLength = paths[newPathIndex];
+
+            const newDot = {
+                // x: dot.x + pathDeltas[newPathIndex],
+                // y: dot.y + pathDeltas[newPathIndex],
+                ...dot,
+                pathIndex: newPathIndex,
+                t: percent * newPathLength
+            };
+
+            console.log(
+                `${t}/${currentPathLength} = ${percent}. ${percent} * ${newPathLength} = ${percent *
+                    newPathLength}`
+            );
+
+            const updatedPathIndex = R.set(this.dotLense(dotIndex), newDot, s);
+            return updatedPathIndex;
+        });
+    };
 
     state = {
+        run: false,
         dots: [
             {
                 pathIndex: 0,
@@ -94,7 +128,7 @@ class App extends React.Component {
         this.setState(({ dots }) => ({
             dots: _.map(this.state.dots, this.updateDotPos)
         }));
-        setTimeout(this.tick, 16);
+        this.state.run && setTimeout(this.tick, 16);
     };
 
     componentDidMount() {
@@ -105,22 +139,82 @@ class App extends React.Component {
             this.path2.current,
             this.path3.current
         ]);
-        console.log(
-            this.path.current.getTotalLength(),
-            this.path2.current.getTotalLength(),
-            this.path3.current.getTotalLength()
-        );
+
         this.tick();
     }
 
+    componentDidUpdate(_, { run }) {
+        if (this.state.run && !run) this.tick();
+    }
+
+    set = new Proxy(this, {
+        get(target, name) {
+            return v => target.setState(() => ({ [name]: v }));
+        }
+    });
+
+    update = new Proxy(this, {
+        get(target, name) {
+            return updater =>
+                target.setState(s => ({
+                    [name]: console.ident(updater(s[name]))
+                }));
+        }
+    });
+
     render() {
         return (
-            <div className="App" onClick={() => this.cyclePathIndex()}>
-                <pre>
-                    <code>{JSON.stringify(this.state, null, 4)}</code>
-                </pre>
-                <svg width="960" height="500">
+            <div className="App">
+                <button onClick={() => this.update.run(v => !v)}>Run</button>
+                <button onClick={() => this.tick()}>>></button>
+                <svg
+                    width="960"
+                    height="500"
+                    onClick={() => this.cyclePathIndex()}
+                >
                     <path
+                        stroke="blue"
+                        ref={this.path}
+                        d=" M480,200c100,0,0,250,100,200s0,-250,100,-300s350,100,100,200s-350,100,-600,0s0,-250,100,-200s0,250,100,300s0,-200,100,-200"
+                    />
+                    <path
+                        stroke="red"
+                        ref={this.path2}
+                        d=" M495,215c100,0,0,250,100,200s0,-250,100,-300s350,100,100,200s-350,100,-600,0s0,-250,100,-200s0,250,100,300s0,-200,100,-200"
+                    />
+                    <path
+                        stroke="green"
+                        ref={this.path3}
+                        d=" M465,185c100,0,0,250,100,200s0,-250,100,-300s350,100,100,200s-350,100,-600,0s0,-250,100,-200s0,250,100,300s0,-200,100,-200"
+                    />
+
+                    <circle r="4" transform="translate(480,200)" />
+                    <circle r="4" transform="translate(580,400)" />
+                    <circle r="4" transform="translate(680,100)" />
+                    <circle r="4" transform="translate(780,300)" />
+                    <circle r="4" transform="translate(180,300)" />
+                    <circle r="4" transform="translate(280,100)" />
+                    <circle r="4" transform="translate(380,400)" />
+                    {_.map(this.state.dots, Dot)}
+                </svg>
+                <details>
+                    <summary>Game State</summary>
+                    This text will be hidden if your browser supports it.
+                    <pre>
+                        <code>{JSON.stringify(this.state, null, 4)}</code>
+                    </pre>
+                </details>
+            </div>
+        );
+    }
+}
+
+const rootElement = document.getElementById('root');
+ReactDOM.render(<App />, rootElement);
+
+/*
+Initial Path Setup 
+<path
                         stroke="blue"
                         ref={this.path}
                         d="M480,200C580,200,480,450,580,400S580,150,680,100S1030,200,780,300S430,400,180,300S180,50,280,100S280,350,380,400S380,200,480,200"
@@ -135,20 +229,4 @@ class App extends React.Component {
                         ref={this.path3}
                         d="M465,185C565,185,465,435,565,385S565,135,665,85S880,185,765,285S415,385,165,285S165,50,265,85S265,335,365,385S365,185,465,185"
                     />
-
-                    <circle r="4" transform="translate(480,200)" />
-                    <circle r="4" transform="translate(580,400)" />
-                    <circle r="4" transform="translate(680,100)" />
-                    <circle r="4" transform="translate(780,300)" />
-                    <circle r="4" transform="translate(180,300)" />
-                    <circle r="4" transform="translate(280,100)" />
-                    <circle r="4" transform="translate(380,400)" />
-                    {_.map(this.state.dots, Dot)}
-                </svg>
-            </div>
-        );
-    }
-}
-
-const rootElement = document.getElementById('root');
-ReactDOM.render(<App />, rootElement);
+*/

@@ -14,3 +14,17 @@ circle {
     stroke: #fff;
     stroke-width: 3px;
 }
+
+circle:nth-last-of-type(3) {
+    fill: #139334;
+    stroke: #16b65c;
+}
+
+circle:nth-last-of-type(2) {
+    fill: #fe130f;
+    stroke: white;
+}
+
+circle:nth-last-of-type(2) {
+    fill: #fe130f;
+}
