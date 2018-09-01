@@ -96,10 +96,12 @@ const findNearest = (target, pointOptions) => {
 };
 
 const resolveHazzardCollisions = (dots, hazzards = []) => {
+    let hasCollided = false;
     const h = hazzards.reduce((hs, h) => {
         const index = findNearest(h, dots);
 
         if (index !== -1) {
+            hasCollided = true;
             dots = R.over(
                 R.lensProp(index),
                 d => ({ ...d, ...h.affect }),
@@ -110,7 +112,7 @@ const resolveHazzardCollisions = (dots, hazzards = []) => {
         return [...hs, h];
     }, []);
 
-    return { hazzards: h, dots };
+    return { hazzards: h, dots, hasCollided };
 };
 
 const resolveDotCollisions = dots => {
@@ -151,6 +153,18 @@ const hazzardAttributes = {
     }
 };
 
+const homingHazzard = {
+    hazzard: true,
+    target: hazzardAttributes.target.homing,
+    homingTarget: 0,
+    pathIndex: -1,
+    t: 1000,
+    x: 622,
+    y: 330,
+    affect: hazzardAttributes.affects.slowDown,
+    speed: hazzardAttributes.speed.fast
+};
+
 class App extends React.Component {
     path = React.createRef();
     path2 = React.createRef();
@@ -163,6 +177,7 @@ class App extends React.Component {
 
     state = {
         run: true,
+        tutorialIndex: 0,
         dots: [
             {
                 id: 1,
@@ -170,7 +185,7 @@ class App extends React.Component {
                 x: 480,
                 y: 200,
                 t: 0,
-                speed: standardSpeed
+                speed: 0.1
             },
             {
                 id: 2,
@@ -178,7 +193,7 @@ class App extends React.Component {
                 x: 495,
                 y: 215,
                 t: 0,
-                speed: standardSpeed
+                speed: 0.01
             },
             {
                 id: 3,
@@ -186,22 +201,10 @@ class App extends React.Component {
                 x: 465,
                 y: 185,
                 t: 0,
-                speed: standardSpeed
+                speed: 0.01
             }
         ],
-        hazzards: [
-            {
-                hazzard: true,
-                target: hazzardAttributes.target.homing,
-                homingTarget: 0,
-                pathIndex: -1,
-                t: 1000,
-                x: 622,
-                y: 330,
-                affect: hazzardAttributes.affects.slowDown,
-                speed: hazzardAttributes.speed.fast
-            }
-        ]
+        hazzards: []
     };
 
     tick = () => {
@@ -215,12 +218,10 @@ class App extends React.Component {
                     ...s,
                     ...resolveHazzardCollisions(s.dots, s.hazzards)
                 }),
-                console.ident,
                 s => ({
                     ...s,
                     ...resolveDotCollisions(s.dots)
                 }),
-                console.ident,
                 s => ({
                     ...s,
                     dots: _.map(s.dots, this.updateDotPos),
@@ -259,7 +260,10 @@ class App extends React.Component {
         this.tick();
     }
 
-    componentDidUpdate(_, { run, dots }) {
+    componentDidUpdate(_, { run, dots, hasCollided, tutorialIndex }) {
+        if (this.state.hasCollided && !hasCollided)
+            setTimeout(() => this.setState({ hasCollided: false }), 3000);
+
         if (this.state.run && !run) this.tick();
 
         if (dots[0].pathIndex !== this.state.dots[0].pathIndex) {
@@ -269,7 +273,25 @@ class App extends React.Component {
                 (a, b) =>
                     distance(a.point, { x, y }) - distance(b.point, { x, y })
             )[0];
+
             this.setState(R.set(this.dotLense(0, 't'), nearestSegment.length));
+        }
+
+        if (
+            this.state.tutorialIndex !== null &&
+            this.state.tutorialIndex !== tutorialIndex
+        ) {
+            setTimeout(
+                this.setState({
+                    tutorialIndex:
+                        tutorialIndex + 1 === 9 ? null : tutorialIndex + 1,
+                    hazzards:
+                        tutorialIndex + 1 === 7
+                            ? this.state.hazzards.concat(homingHazzard)
+                            : this.state.hazzards
+                }),
+                3000
+            );
         }
     }
 
@@ -293,7 +315,7 @@ class App extends React.Component {
             <div
                 className="App"
                 tabIndex="0"
-                onKeyDown={({ key, ...e }) =>
+                onKeyDown={({ key }) =>
                     this.cyclePathIndex(
                         0,
                         key === 'ArrowRight' ? cycleThree.inc : cycleThree.dec
@@ -310,7 +332,10 @@ class App extends React.Component {
             >
                 <button onClick={() => this.update.run(v => !v)}>Run</button>
                 <button onClick={() => this.tick()}>>></button>
-                <svg viewBox="0 0 700 600">
+                <svg
+                    viewBox="0 0 700 600"
+                    // className={this.state.hasCollided ? 'shake' : ''}
+                >
                     <path
                         stroke="blue"
                         ref={this.path}
@@ -328,18 +353,99 @@ class App extends React.Component {
                     />
                     {_.map(this.state.dots, Dot)}
                     {_.map(this.state.hazzards, Hazzard)}
+                    <g>
+                        <text
+                            style={{ textDecoration: 'underline' }}
+                            x="30"
+                            y="30"
+                            class="small"
+                        >
+                            {this.state.tutorialIndex !== null
+                                ? tutorials[this.state.tutorialIndex].text
+                                : ''}
+                        </text>
+                        {this.state.tutorialIndex !== null &&
+                            tutorials[this.state.tutorialIndex].target && (
+                                <path
+                                    stroke="#555"
+                                    stroke-width="1px"
+                                    d={`M33 33 
+                                L 33 55 
+                                L ${
+                                    _.get(
+                                        this.state,
+                                        tutorials[this.state.tutorialIndex]
+                                            .target
+                                    ).x
+                                } 
+                                  ${
+                                      _.get(
+                                          this.state,
+                                          tutorials[this.state.tutorialIndex]
+                                              .target
+                                      ).y
+                                  }`}
+                                />
+                            )}
+                    </g>
                 </svg>
                 <details>
                     <summary>Game State</summary>
                     This text will be hidden if your browser supports it.
                     <pre>
                         <code>{JSON.stringify(this.state, null, 4)}</code>
+                        <code>
+                            {JSON.stringify(
+                                tutorials[this.state.tutorialIndex],
+                                null,
+                                4
+                            )}
+                        </code>
                     </pre>
                 </details>
             </div>
         );
     }
 }
+
+const tutorials = [
+    {
+        text: 'This is you',
+        target: 'dots.0'
+    },
+    {
+        text: 'You want to stay ahead of the other racers',
+        target: 'dots.0'
+    },
+    {
+        text: 'Switch between lanes to find the best route',
+        target: 'dots.0'
+    },
+    {
+        text:
+            'ontouchstart' in document.documentElement
+                ? 'Tap the screen to switch lanes.'
+                : 'Use the arrow keys to switch lanes',
+        target: null
+    },
+    {
+        text: 'You will also want to switch lanes to dodge the other racers',
+        target: null
+    },
+    {
+        text:
+            "If you bump into their back you'll slow down and they'll speed up. Of course that works in reverse too",
+        target: null
+    },
+    {
+        text: 'You also need to look out for hazzards.',
+        target: 'hazzards.0'
+    },
+    {
+        text: 'They will also slow you down for a bit.',
+        target: 'hazzards.0'
+    }
+];
 
 const rootElement = document.getElementById('root');
 ReactDOM.render(<App />, rootElement);
