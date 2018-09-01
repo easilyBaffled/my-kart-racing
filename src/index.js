@@ -113,6 +113,25 @@ const resolveHazzardCollisions = (dots, hazzards = []) => {
     return { hazzards: h, dots };
 };
 
+const resolveDotCollisions = dots => {
+    const updatedDots = _.map(dots, (dot, i) => {
+        const { t, pathIndex, speed } = dot;
+        const dotIndex = (Array.isArray(dots)
+            ? dots
+            : Object.values(dots)
+        ).findIndex(d => d.pathIndex === pathIndex && Math.abs(d.t - t) < 20);
+
+        if (dotIndex !== -1 && dotIndex !== i) {
+            const targetDot = dots[dotIndex];
+
+            if (targetDot.t > t) return { ...dot, speed: speed / 2 };
+            if (targetDot.t < t) return { ...dot, speed: speed * 1.5 };
+        }
+        return dot;
+    });
+    return { dots: updatedDots };
+};
+
 const hazzardAttributes = {
     speed: {
         static: 0,
@@ -186,16 +205,6 @@ class App extends React.Component {
     };
 
     tick = () => {
-        // const older = ({ dots, hazzards }) => {
-        //     hazzards = _.map(hazzards, updateTargeting(dots));
-        //     const { dots, hazzards } = resolveCollisions(dots, hazzards);
-
-        //     return {
-        //         dots: _.map(dots, this.updateDotPos),
-        //         hazzards: _.map(hazzards, this.updateDotPos)
-        //     };
-        // };
-
         this.setState(
             R.pipe(
                 s => ({
@@ -206,6 +215,12 @@ class App extends React.Component {
                     ...s,
                     ...resolveHazzardCollisions(s.dots, s.hazzards)
                 }),
+                console.ident,
+                s => ({
+                    ...s,
+                    ...resolveDotCollisions(s.dots)
+                }),
+                console.ident,
                 s => ({
                     ...s,
                     dots: _.map(s.dots, this.updateDotPos),
