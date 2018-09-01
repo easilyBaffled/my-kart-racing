@@ -88,3 +88,8 @@ circle.dot:nth-of-type(2) {
         transform: translate3d(4px, 0, 0);
     }
 }
+
+.tutorialText {
+    font: bold 15px sans-serif;
+    text-decoration: underline;
+}

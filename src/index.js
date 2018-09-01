@@ -177,7 +177,7 @@ class App extends React.Component {
 
     state = {
         run: true,
-        tutorialIndex: 0,
+        tutorialIndex: null,
         dots: [
             {
                 id: 1,
@@ -256,8 +256,8 @@ class App extends React.Component {
                 })
             )
         );
-
-        this.tick();
+        this.setState({ tutorialIndex: 0 }, this.tick);
+        // this.tick();
     }
 
     componentDidUpdate(_, { run, dots, hasCollided, tutorialIndex }) {
@@ -276,20 +276,31 @@ class App extends React.Component {
 
             this.setState(R.set(this.dotLense(0, 't'), nearestSegment.length));
         }
-
+        // console.log(this.state.tutorialIndex !== null,
+        //     this.state.tutorialIndex !== tutorialIndex )
         if (
             this.state.tutorialIndex !== null &&
             this.state.tutorialIndex !== tutorialIndex
         ) {
+            console.log(
+                'tutorial tick',
+                this.state.tutorialIndex,
+                tutorialIndex
+            );
             setTimeout(
-                this.setState({
-                    tutorialIndex:
-                        tutorialIndex + 1 === 9 ? null : tutorialIndex + 1,
-                    hazzards:
-                        tutorialIndex + 1 === 7
-                            ? this.state.hazzards.concat(homingHazzard)
-                            : this.state.hazzards
-                }),
+                () =>
+                    this.setState(s => ({
+                        tutorialIndex: console.ident(
+                            s.tutorialIndex + 1 === 9
+                                ? null
+                                : s.tutorialIndex + 1
+                        ),
+                        hazzards: console.ident(
+                            s.tutorialIndex + 1 === 7
+                                ? this.state.hazzards.concat(homingHazzard)
+                                : this.state.hazzards
+                        )
+                    })),
                 3000
             );
         }
@@ -354,17 +365,16 @@ class App extends React.Component {
                     {_.map(this.state.dots, Dot)}
                     {_.map(this.state.hazzards, Hazzard)}
                     <g>
-                        <text
-                            style={{ textDecoration: 'underline' }}
-                            x="30"
-                            y="30"
-                            class="small"
-                        >
+                        <text x="30" y="30" className="tutorialText">
                             {this.state.tutorialIndex !== null
                                 ? tutorials[this.state.tutorialIndex].text
                                 : ''}
                         </text>
                         {this.state.tutorialIndex !== null &&
+                            _.get(
+                                this.state,
+                                tutorials[this.state.tutorialIndex].target
+                            ) &&
                             tutorials[this.state.tutorialIndex].target && (
                                 <path
                                     stroke="#555"
@@ -391,7 +401,6 @@ class App extends React.Component {
                 </svg>
                 <details>
                     <summary>Game State</summary>
-                    This text will be hidden if your browser supports it.
                     <pre>
                         <code>{JSON.stringify(this.state, null, 4)}</code>
                         <code>
@@ -429,12 +438,17 @@ const tutorials = [
         target: null
     },
     {
-        text: 'You will also want to switch lanes to dodge the other racers',
+        text: `You will also want to switch lanes 
+        to dodge the other racers`,
         target: null
     },
     {
         text:
-            "If you bump into their back you'll slow down and they'll speed up. Of course that works in reverse too",
+            "If you bump into their back you'll slow down and they'll speed up. ",
+        target: null
+    },
+    {
+        text: 'Of course that works in reverse too',
         target: null
     },
     {
