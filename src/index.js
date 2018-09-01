@@ -34,7 +34,7 @@ const cycleOne = cycleNumber(0, 1);
 
 const pointOnPath = (path, t) => {
     var l = path.getTotalLength();
-    return path.getPointAtLength(t);
+    return path.getPointAtLength(t * l);
 };
 
 const Dot = ({ x, y }) => {
@@ -45,26 +45,24 @@ const updateDotPos = paths => dot => {
     const path = paths[dot.pathIndex];
     return {
         ...dot,
-        t: R.ifElse(
-            v => v > path.getTotalLength(),
-            v => v % path.getTotalLength(),
-            v => v
-        )(dot.t + dot.speed),
+        t: cycleOne.inc(dot.t, dot.speed),
         ..._.pick(pointOnPath(path, dot.t), ['x', 'y'])
     };
 };
 
-const standardSpeed = 5; //0.002;
+const standardSpeed = 0.002; // 5
 
 class App extends React.Component {
     path = React.createRef();
     path2 = React.createRef();
     path3 = React.createRef();
 
-    cyclePathIndex = () =>
-        this.setState(({ pathIndex }) => ({
-            pathIndex: cycleThree.inc(pathIndex)
-        }));
+    dotLense = (...args) => R.lensPath(['dots', ...args]);
+
+    cyclePathIndex = (dotIndex = 0) =>
+        this.setState(
+            R.over(this.dotLense(dotIndex, 'pathIndex'), cycleThree.inc)
+        );
 
     state = {
         dots: [
@@ -94,7 +92,7 @@ class App extends React.Component {
 
     tick = () => {
         this.setState(({ dots }) => ({
-            dots: dots.map(this.updateDotPos)
+            dots: _.map(this.state.dots, this.updateDotPos)
         }));
         setTimeout(this.tick, 16);
     };
@@ -117,7 +115,7 @@ class App extends React.Component {
 
     render() {
         return (
-            <div className="App" onClick={this.cyclePathIndex}>
+            <div className="App" onClick={() => this.cyclePathIndex()}>
                 <pre>
                     <code>{JSON.stringify(this.state, null, 4)}</code>
                 </pre>
@@ -145,7 +143,7 @@ class App extends React.Component {
                     <circle r="4" transform="translate(180,300)" />
                     <circle r="4" transform="translate(280,100)" />
                     <circle r="4" transform="translate(380,400)" />
-                    {this.state.dots.map(Dot)}
+                    {_.map(this.state.dots, Dot)}
                 </svg>
             </div>
         );
