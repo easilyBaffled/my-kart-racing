@@ -47,3 +47,12 @@ circle.dot:nth-of-type(2) {
         stroke: rgba(255, 0, 0, 0);
     }
 }
+
+@keyframes splat {
+    0% {
+        stroke: rgba(255, 0, 0, 0.5);
+    }
+    100% {
+        stroke: rgba(255, 0, 0, 0);
+    }
+}

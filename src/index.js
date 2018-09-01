@@ -62,8 +62,8 @@ const updateDotPos = paths => dot => {
         dot.speed === standardSpeed || dot.hazzard
             ? dot.speed
             : dot.speed < standardSpeed
-                ? Math.min(dot.speed * 1.2, standardSpeed)
-                : Math.max(dot.speed * 0.8, standardSpeed);
+                ? Math.min(dot.speed * 1.02, standardSpeed)
+                : Math.max(dot.speed * 0.08, standardSpeed);
 
     return {
         ...dot,
@@ -95,7 +95,7 @@ const findNearest = (target, pointOptions) => {
     return pointOptions.findIndex(point => distance(point, target) < 20);
 };
 
-const resolveCollisions = (dots, hazzards = []) => {
+const resolveHazzardCollisions = (dots, hazzards = []) => {
     const h = hazzards.reduce((hs, h) => {
         const index = findNearest(h, dots);
 
@@ -127,7 +127,7 @@ const hazzardAttributes = {
     },
     affects: {
         speedUp: { speed: standardSpeed * 2 },
-        slowDown: { speed: standardSpeed / 2 },
+        slowDown: { speed: standardSpeed / 4 },
         shield: 1000
     }
 };
@@ -143,7 +143,7 @@ class App extends React.Component {
         this.setState(R.over(this.dotLense(dotIndex, 'pathIndex'), func));
 
     state = {
-        run: false,
+        run: true,
         dots: [
             {
                 id: 1,
@@ -176,7 +176,7 @@ class App extends React.Component {
                 target: hazzardAttributes.target.homing,
                 homingTarget: 0,
                 pathIndex: -1,
-                t: 100,
+                t: 1000,
                 x: 622,
                 y: 330,
                 affect: hazzardAttributes.affects.slowDown,
@@ -202,7 +202,10 @@ class App extends React.Component {
                     ...s,
                     hazzards: _.map(s.hazzards, updateTargeting(s.dots))
                 }),
-                s => ({ ...s, ...resolveCollisions(s.dots, s.hazzards) }),
+                s => ({
+                    ...s,
+                    ...resolveHazzardCollisions(s.dots, s.hazzards)
+                }),
                 console.ident,
                 s => ({
                     ...s,
@@ -280,6 +283,14 @@ class App extends React.Component {
                     this.cyclePathIndex(
                         0,
                         key === 'ArrowRight' ? cycleThree.inc : cycleThree.dec
+                    )
+                }
+                onTouchStart={e =>
+                    this.cyclePathIndex(
+                        0,
+                        e.touches[0].clientX > document.body.clientWidth / 2
+                            ? cycleThree.inc
+                            : cycleThree.dec
                     )
                 }
             >
