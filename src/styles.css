@@ -31,3 +31,19 @@ circle:nth-last-of-type(2) {
 circle:nth-last-of-type(2) {
     fill: #fe130f;
 }
+
+.hazzard {
+    fill: black;
+    filter: drop-shadow(16px 16px 20px red);
+    animation: pulseCheat 1.5s infinite;
+    stroke-width: 5px;
+}
+
+@keyframes pulseCheat {
+    0% {
+        stroke: rgba(255, 0, 0, 0.5);
+    }
+    100% {
+        stroke: rgba(255, 0, 0, 0);
+    }
+}

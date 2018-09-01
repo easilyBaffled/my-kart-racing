@@ -41,13 +41,19 @@ const Dot = ({ x, y }) => {
     return <circle className="dot" r="13" transform={`translate(${x},${y})`} />;
 };
 
+const Hazzard = ({ x, y, attributes }) => {
+    return (
+        <circle className="pulse" r="8" transform={`translate(${x},${y})`} />
+    );
+};
+
 const updateDotPos = paths => dot => {
     const path = paths[dot.pathIndex];
     return {
         ...dot,
         t: R.ifElse(
             v => v > path.getTotalLength(),
-            v => (console.log('lap', Date.now()), v % path.getTotalLength()),
+            v => v % path.getTotalLength(),
             v => v
         )(dot.t + dot.speed),
         ..._.pick(pointOnPath(path, dot.t), ['x', 'y'])
@@ -61,6 +67,25 @@ const distance = (pointA, pointB) => {
     var b = pointA.y - pointB.y;
 
     return Math.sqrt(a * a + b * b);
+};
+
+const hazzardAttributes = {
+    speed: {
+        static: () => ({ speed: 0 }),
+        slow: () => ({ speed: standardSpeed / 2 }),
+        normal: () => ({ speed: standardSpeed / 2 }),
+        fast: () => ({ speed: standardSpeed * 2 })
+    },
+    target: {
+        everyone: () => ({ target: null }),
+        me: () => ({ target: 0 }),
+        anyone: () => ({ target: -1 })
+    },
+    affects: {
+        speed: (amount = 1.5) => speed => speed * amount,
+        shield: () => ({ shielded: true })
+    },
+    homing: target => () => ({ pathIndex: R.view(target).pathIndex })
 };
 
 class App extends React.Component {
@@ -82,22 +107,23 @@ class App extends React.Component {
                 y: 200,
                 t: 0,
                 speed: standardSpeed
+            },
+            {
+                pathIndex: 1,
+                x: 495,
+                y: 215,
+                t: 0,
+                speed: standardSpeed
+            },
+            {
+                pathIndex: 2,
+                x: 465,
+                y: 185,
+                t: 0,
+                speed: standardSpeed
             }
-            // {
-            //     pathIndex: 1,
-            //     x: 495,
-            //     y: 215,
-            //     t: 0,
-            //     speed: standardSpeed
-            // },
-            // {
-            //     pathIndex: 2,
-            //     x: 465,
-            //     y: 185,
-            //     t: 0,
-            //     speed: standardSpeed
-            // }
-        ]
+        ],
+        hazzards: []
     };
 
     tick = () => {
@@ -124,7 +150,7 @@ class App extends React.Component {
 
         this.pathSegments = this.paths.map(path =>
             Array.from(
-                { length: path.getTotalLength() / standardSpeed },
+                { length: path.getTotalLength() / (standardSpeed / 2) },
                 (_, i) => ({
                     point: path.getPointAtLength(i * standardSpeed),
                     length: i * standardSpeed
@@ -137,6 +163,7 @@ class App extends React.Component {
 
     componentDidUpdate(_, { run, dots }) {
         if (this.state.run && !run) this.tick();
+
         if (dots[0].pathIndex !== this.state.dots[0].pathIndex) {
             const { pathIndex, x, y } = this.state.dots[0];
             const setgments = this.pathSegments[pathIndex];
@@ -183,12 +210,12 @@ class App extends React.Component {
                     <path
                         stroke="blue"
                         ref={this.path}
-                        d="M 630 400 Q 600 70 500 250 Q 350 600 200 250 Q 100 70 80 400 Q 80 510 350 525 Q 600 510 630 400 Z"
+                        d="M 630 400 Q 600 70 500 250 Q 350 580 200 250 Q 100 70 80 400 Q 80 510 350 525 Q 600 510 630 400 Z"
                     />
                     <path
                         stroke="red"
                         ref={this.path2}
-                        d="M 650 400 Q 600 0 470 250 Q 350 500 230 250 Q 100 0 50 400 Q 50 550 350 550 Q 650 550 650 400 Z"
+                        d="M 650 400 Q 600 0 470 250 Q 350 450 230 250 Q 100 0 50 400 Q 50 550 350 550 Q 650 550 650 400 Z"
                     />
                     <path
                         stroke="green"
@@ -196,6 +223,7 @@ class App extends React.Component {
                         d="M 600 400 Q 590 100 500 300 Q 350 630 200 300 Q 120 100 100 400 Q 120 480 350 500 Q 580 480 600 400"
                     />
                     {_.map(this.state.dots, Dot)}
+                    <Hazzard x={622} y={330} />
                 </svg>
                 <details>
                     <summary>Game State</summary>
@@ -211,25 +239,3 @@ class App extends React.Component {
 
 const rootElement = document.getElementById('root');
 ReactDOM.render(<App />, rootElement);
-
-// M 650 400 Q 600 0 450 250 Q 350 550 250 250 Q 100 0 50 400 Q 50 550 350 550 Q 650 550 650 400 Z
-// M 600 400 Q 600 50 500 250 Q 350 600 200 250 Q 100 50 100 400 Q 100 500 350 500 Q 600 500 600 400 Z /*
-
-/* 
-Initial Path Setup 
-<path
-                        stroke="blue"
-                        ref={this.path}
-                        d="M480,200C580,200,480,450,580,400S580,150,680,100S1030,200,780,300S430,400,180,300S180,50,280,100S280,350,380,400S380,200,480,200"
-                    />
-                    <path
-                        stroke="red"
-                        ref={this.path2}
-                        d="M495,215C595,215,495,465,595,415S595,165,695,115S1180,215,795,315S445,415,195,315S195,50,295,115S295,365,395,415S395,215,495,215"
-                    />
-                    <path
-                        stroke="green"
-                        ref={this.path3}
-                        d="M465,185C565,185,465,435,565,385S565,135,665,85S880,185,765,285S415,385,165,285S165,50,265,85S265,335,365,385S365,185,465,185"
-                    />
-*/
