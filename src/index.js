@@ -65,14 +65,18 @@ const updateDotPos = paths => dot => {
                 ? Math.min(dot.speed * 1.02, standardSpeed)
                 : Math.max(dot.speed * 0.08, standardSpeed);
 
+    const t = R.ifElse(
+        v => v > path.getTotalLength(),
+        v => v % path.getTotalLength(),
+        v => v
+    )(dot.t + speed);
+
     return {
         ...dot,
         speed,
-        t: R.ifElse(
-            v => v > path.getTotalLength(),
-            v => v % path.getTotalLength(),
-            v => v
-        )(dot.t + speed),
+        t,
+        laps: dot.t + speed > path.getTotalLength() ? dot.laps + 1 : dot.laps,
+        lapPercentComplete: t / path.getTotalLength(),
         ..._.pick(pointOnPath(path, dot.t), ['x', 'y'])
     };
 };
@@ -158,7 +162,7 @@ const homingHazzard = {
     target: hazzardAttributes.target.homing,
     homingTarget: 0,
     pathIndex: -1,
-    t: 1000,
+    t: 10,
     x: 622,
     y: 330,
     affect: hazzardAttributes.affects.slowDown,
@@ -180,28 +184,31 @@ class App extends React.Component {
         tutorialIndex: null,
         dots: [
             {
-                id: 1,
+                id: 'player',
                 pathIndex: 0,
                 x: 480,
                 y: 200,
-                t: 0,
-                speed: 0.1
+                t: 1300,
+                speed: 0.05,
+                laps: -1
             },
             {
-                id: 2,
+                id: 'mario',
                 pathIndex: 1,
                 x: 495,
                 y: 215,
                 t: 0,
-                speed: 0.01
+                speed: 0.01,
+                laps: 0
             },
             {
-                id: 3,
+                id: 'luigi',
                 pathIndex: 2,
                 x: 465,
                 y: 185,
                 t: 0,
-                speed: 0.01
+                speed: 0.01,
+                laps: 0
             }
         ],
         hazzards: []
@@ -256,8 +263,8 @@ class App extends React.Component {
                 })
             )
         );
+
         this.setState({ tutorialIndex: 0 }, this.tick);
-        // this.tick();
     }
 
     componentDidUpdate(_, { run, dots, hasCollided, tutorialIndex }) {
@@ -276,32 +283,24 @@ class App extends React.Component {
 
             this.setState(R.set(this.dotLense(0, 't'), nearestSegment.length));
         }
-        // console.log(this.state.tutorialIndex !== null,
-        //     this.state.tutorialIndex !== tutorialIndex )
+
         if (
             this.state.tutorialIndex !== null &&
             this.state.tutorialIndex !== tutorialIndex
         ) {
-            console.log(
-                'tutorial tick',
-                this.state.tutorialIndex,
-                tutorialIndex
-            );
             setTimeout(
                 () =>
                     this.setState(s => ({
-                        tutorialIndex: console.ident(
+                        tutorialIndex:
                             s.tutorialIndex + 1 === 9
                                 ? null
-                                : s.tutorialIndex + 1
-                        ),
-                        hazzards: console.ident(
+                                : s.tutorialIndex + 1,
+                        hazzards:
                             s.tutorialIndex + 1 === 7
                                 ? this.state.hazzards.concat(homingHazzard)
                                 : this.state.hazzards
-                        )
                     })),
-                3000
+                4000
             );
         }
     }
@@ -343,22 +342,40 @@ class App extends React.Component {
             >
                 <button onClick={() => this.update.run(v => !v)}>Run</button>
                 <button onClick={() => this.tick()}>>></button>
+                {this.state.tutorialIndex === null && (
+                    <h3 className="positions">
+                        Positions:{' '}
+                        {_
+                            .sortBy(this.state.dots, [
+                                'laps',
+                                'lapPercentComplete'
+                            ])
+                            .reverse()
+                            .map((d, i) => (
+                                <div className={`position-dot ${d.id}`}>
+                                    {' '}
+                                    {i + 1}{' '}
+                                </div>
+                            ))}
+                    </h3>
+                )}
+
                 <svg
                     viewBox="0 0 700 600"
                     // className={this.state.hasCollided ? 'shake' : ''}
                 >
                     <path
-                        stroke="blue"
+                        stroke="#0268B1"
                         ref={this.path}
                         d="M 630 400 Q 600 70 500 250 Q 350 580 200 250 Q 100 70 80 400 Q 80 510 350 525 Q 600 510 630 400 Z"
                     />
                     <path
-                        stroke="red"
+                        stroke="#074D7E"
                         ref={this.path2}
                         d="M 650 400 Q 600 0 470 250 Q 350 450 230 250 Q 100 0 50 400 Q 50 550 350 550 Q 650 550 650 400 Z"
                     />
                     <path
-                        stroke="green"
+                        stroke="#2084CB"
                         ref={this.path3}
                         d="M 600 400 Q 590 100 500 300 Q 350 630 200 300 Q 120 100 100 400 Q 120 480 350 500 Q 580 480 600 400"
                     />
