@@ -100,12 +100,13 @@ const findNearest = (target, pointOptions) => {
 };
 
 const resolveHazzardCollisions = (dots, hazzards = []) => {
-    let hasCollided = false;
+    var hasCollided = false;
     const h = hazzards.reduce((hs, h) => {
         const index = findNearest(h, dots);
 
         if (index !== -1) {
             hasCollided = true;
+
             dots = R.over(
                 R.lensProp(index),
                 d => ({ ...d, ...h.affect }),
@@ -115,7 +116,6 @@ const resolveHazzardCollisions = (dots, hazzards = []) => {
         }
         return [...hs, h];
     }, []);
-
     return { hazzards: h, dots, hasCollided };
 };
 
@@ -344,7 +344,7 @@ class App extends React.Component {
                 <button onClick={() => this.tick()}>>></button>
                 {this.state.tutorialIndex === null && (
                     <h3 className="positions">
-                        Positions:{' '}
+                        Positions by Lap:{' '}
                         {_
                             .sortBy(this.state.dots, [
                                 'laps',
@@ -353,8 +353,7 @@ class App extends React.Component {
                             .reverse()
                             .map((d, i) => (
                                 <div className={`position-dot ${d.id}`}>
-                                    {' '}
-                                    {i + 1}{' '}
+                                    {d.laps}
                                 </div>
                             ))}
                     </h3>
@@ -362,7 +361,7 @@ class App extends React.Component {
 
                 <svg
                     viewBox="0 0 700 600"
-                    // className={this.state.hasCollided ? 'shake' : ''}
+                    className={this.state.hasCollided ? 'shake' : ''}
                 >
                     <path
                         stroke="#0268B1"
