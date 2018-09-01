@@ -109,7 +109,7 @@ const resolveHazzardCollisions = (dots, hazzards = []) => {
         }
         return [...hs, h];
     }, []);
-    console.log(dots);
+
     return { hazzards: h, dots };
 };
 
@@ -206,7 +206,6 @@ class App extends React.Component {
                     ...s,
                     ...resolveHazzardCollisions(s.dots, s.hazzards)
                 }),
-                console.ident,
                 s => ({
                     ...s,
                     dots: _.map(s.dots, this.updateDotPos),
@@ -296,7 +295,7 @@ class App extends React.Component {
             >
                 <button onClick={() => this.update.run(v => !v)}>Run</button>
                 <button onClick={() => this.tick()}>>></button>
-                <svg width="960" height="600">
+                <svg viewBox="0 0 700 600">
                     <path
                         stroke="blue"
                         ref={this.path}
