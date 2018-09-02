@@ -6,6 +6,8 @@ import R from 'ramda';
 
 import './styles.css';
 
+import car from '../src/assets/blue_car.svg';
+
 console.ident = v => (console.log(v), v);
 
 const shiftPath = (path, shiftAmount) =>
@@ -71,7 +73,7 @@ const distance = (pointA, pointB) => {
 };
 
 const findNearest = (target, pointOptions) => {
-    return pointOptions.findIndex(point => distance(point, target) < 20);
+    return _.findIndex(pointOptions, point => distance(point, target) < 20);
 };
 
 const resolveHazzardCollisions = (dots, hazzards = []) => {
@@ -304,17 +306,24 @@ class App extends React.Component {
                 () =>
                     this.setState(s => ({
                         tutorialIndex:
-                            s.tutorialIndex + 1 === 9
+                            s.tutorialIndex + 1 === 10
                                 ? null
                                 : s.tutorialIndex + 1,
                         hazzards:
-                            s.tutorialIndex + 1 === 7
+                            s.tutorialIndex + 1 === 8
                                 ? this.state.hazzards.concat(homingHazzard)
                                 : this.state.hazzards
                     })),
-                3000
+                3100
             );
         }
+
+        // if (tutorialIndex === null && this.state.hazzards.length === 1) {
+        //     setTimeout(
+        //         () => this.update.hazzards(h => h.concat(homingHazzard)),
+        //         Math.max(7000, Math.random() * 1000)
+        //     );
+        // }
     }
 
     set = new Proxy(this, {
@@ -337,12 +346,13 @@ class App extends React.Component {
             <div
                 className="App"
                 tabIndex="0"
-                onKeyDown={({ key }) =>
+                onKeyDown={({ key, preventdefault }) => (
+                    preventdefault(),
                     this.cyclePathIndex(
                         0,
                         key === 'ArrowRight' ? cycleThree.inc : cycleThree.dec
                     )
-                }
+                )}
                 onTouchStart={e =>
                     this.cyclePathIndex(
                         0,
@@ -409,7 +419,7 @@ class App extends React.Component {
                             tutorials[this.state.tutorialIndex].target && (
                                 <path
                                     stroke="#555"
-                                    stroke-width="1px"
+                                    strokeWidth="1px"
                                     d={`M33 33 
                                 L 33 55 
                                 L ${
@@ -481,8 +491,12 @@ const tutorials = [
         target: null
     },
     {
-        text: 'Of course that works in reverse too',
+        text: 'Of course that works in reverse too.',
         target: null
+    },
+    {
+        text: 'Hit the boost pad for a burst of speed!',
+        target: 'hazzards.0'
     },
     {
         text: 'You also need to look out for hazzards.',

@@ -54,6 +54,7 @@ circle.dot:nth-of-type(2) {
     padding: 10px;
     height: 10vh;
     box-sizing: border-box;
+    margin: 0px;
 }
 
 .position-dot {
@@ -133,4 +134,16 @@ circle.dot:nth-of-type(2) {
 .tutorialText {
     font: bold 20px sans-serif;
     text-decoration: underline;
+}
+
+.path {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: dash 5s linear forwards;
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: 0;
+    }
 }
