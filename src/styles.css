@@ -73,6 +73,7 @@ circle.dot.mario {
     align-items: start;
     padding: 5px;
     font-weight: 300;
+    font-size: 3vh;
 }
 
 .attribution a {
@@ -115,7 +116,7 @@ circle.dot.mario {
 .fade-out {
     margin-left: 20px;
     opacity: 1;
-    animation: fade-out 3.5s forwards;
+    /*animation: fade-out 3.5s forwards;*/
 }
 
 @keyframes fade-out {

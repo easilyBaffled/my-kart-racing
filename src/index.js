@@ -5,30 +5,9 @@ import * as R from 'ramda';
 
 import './styles.css';
 
-import car from '../src/assets/blue_car.svg';
-
-var demo = false;
-
 console.ident = v => (console.log(v), v);
 
-class FadeText extends React.PureComponent {
-    render() {
-        return <div className="fade-out"> {this.props.val} </div>;
-    }
-}
-
-const shiftPath = (path, shiftAmount) =>
-    path
-        .getAttribute('d')
-        .split(',')
-        .map(s =>
-            s.replace(/(\d\d\d)([A-Z])?(\d\d\d)?/g, (_, d1, c1 = '', d2) => {
-                return `${parseInt(d1) + shiftAmount}${c1}${
-                    d2 ? parseInt(d2) + shiftAmount : ''
-                }`;
-            })
-        )
-        .join();
+const FadeText = ( { val } ) => <div key={Math.random()} className="fade-out"> {val} </div>;
 
 const cycleNumber = (min, max) => ({
     inc(val, amount = 1) {
@@ -40,10 +19,8 @@ const cycleNumber = (min, max) => ({
 });
 
 const cycleThree = cycleNumber(0, 2);
-const cycleOne = cycleNumber(0, 1);
 
 const pointOnPath = (path, t) => {
-    var l = path.getTotalLength();
     return path.getPointAtLength(t);
 };
 
@@ -238,7 +215,7 @@ const homingHazzard = {
     previousPos: []
 };
 
-const randomHazzard = (props, target = hazzardAttributes.target.everyone) => {
+const randomHazzard = props => {
     const hazzard = {
         ...homingHazzard,
         x: -10,
@@ -312,7 +289,7 @@ class App extends React.Component {
 
     state = {
         run: true,
-        tutorialIndex: null,
+        tutorialIndex: 14,
         deployHazzard: [],
         deployBoost: [],
         dots: [
@@ -490,8 +467,6 @@ class App extends React.Component {
         if (this.state.hasCollided && !hasCollided)
             setTimeout(() => this.setState({ hasCollided: false }), 3000);
 
-        //if (this.state.run && !run) this.tick();
-
         if (dots[0].pathIndex !== this.state.dots[0].pathIndex) {
             const { pathIndex, x, y } = this.state.dots[0];
             const setgments = this.pathSegments[pathIndex];
@@ -609,7 +584,7 @@ class App extends React.Component {
                                     'lapPercentComplete'
                                 ])
                                 .reverse()
-                                .map((d, i) => (
+                                .map(d => (
                                     <div className={`position-dot ${d.id}`}>
                                         {d.laps}
                                     </div>
@@ -617,6 +592,7 @@ class App extends React.Component {
                             <FadeText val={this.state.fadeTime} />
                         </React.Fragment>
                     )}
+
                     <h5 className="attribution">
                         <a href="https://github.com/easilyBaffled">
                             Development By Danny Michaelis
@@ -707,7 +683,7 @@ class App extends React.Component {
 
 class Tutorials extends React.Component {
     shouldComponentUpdate({ tutorialIndex }) {
-        return tutorialIndex !== null;
+        return tutorialIndex !== null  || this.props.tutorialIndex === 14;
     }
 
     render() {
