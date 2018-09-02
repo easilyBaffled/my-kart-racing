@@ -34,6 +34,11 @@ circle {
     stroke-width: 3px;
 }
 
+.dot {
+    stroke-dasharray: 90;
+    /* stroke-dashoffset: 90; */
+}
+
 .trail {
     stroke-width: 0px;
 }
@@ -138,8 +143,8 @@ circle.dot.mario {
 }
 
 .path {
-    stroke-dasharray: 1000;
-    stroke-dashoffset: 1000;
+    stroke-dasharray: 90;
+    stroke-dashoffset: 90;
     animation: dash 5s linear forwards;
 }
 

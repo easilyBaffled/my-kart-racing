@@ -42,7 +42,7 @@ const pointOnPath = (path, t) => {
     return path.getPointAtLength(t);
 };
 
-const Dot = ({ x, y, id, previousPos }) => {
+const Dot = ({ x, y, id, previousPos, itemCharge }) => {
     return (
         <g>
             {previousPos.map(({ x, y }, i) => (
@@ -60,6 +60,7 @@ const Dot = ({ x, y, id, previousPos }) => {
                 id={id}
                 className={'dot ' + id}
                 r="13"
+                strokeDashoffset={90 - itemCharge}
                 transform={`translate(${x + Math.random() * 1.5},${y})`}
             />
         </g>
@@ -88,7 +89,12 @@ const Hazzard = ({ x, y, previousPos, attributes }) => {
 
 const updateTargeting = dots => hazzard =>
     hazzard.target === hazzardAttributes.target.homing
-        ? { ...hazzard, pathIndex: dots[hazzard.homingTarget].pathIndex }
+        ? {
+              ...hazzard,
+              pathIndex: hazzard.homingTarget
+                  ? dots[hazzard.homingTarget].pathIndex
+                  : hazzard.pathIndex
+          }
         : hazzard;
 
 const standardSpeed = 5; //0.002; // 5
@@ -145,13 +151,13 @@ const resolveDotCollisions = dots => {
 
 const updateDotPos = paths => dot => {
     const path = paths[dot.pathIndex];
+    console.log(dot, path);
     const speed =
         dot.speed === standardSpeed || dot.hazzard
             ? dot.speed
             : dot.speed < standardSpeed
                 ? Math.min(dot.speed * 1.02, standardSpeed)
                 : Math.max(dot.speed * 0.99, standardSpeed);
-
     const t = R.ifElse(
         v => v > path.getTotalLength(),
         v => v % path.getTotalLength(),
@@ -160,6 +166,7 @@ const updateDotPos = paths => dot => {
 
     return {
         ...dot,
+        itemCharge: Math.min(dot.itemCharge + 0.13, 90),
         previousPos: [
             { x: dot.x, y: dot.y },
             ...dot.previousPos.slice(+(!dot.hazzard && Math.random() < 0.19), 7)
@@ -208,13 +215,31 @@ const homingHazzard = {
     hazzard: true,
     target: hazzardAttributes.target.homing,
     homingTarget: 0,
-    pathIndex: -1,
+    pathIndex: 1,
     t: 10,
     x: 622,
     y: 330,
     affect: hazzardAttributes.affects.slowDown,
     speed: hazzardAttributes.speed.fast,
     previousPos: []
+};
+
+const randomHazzard = (props, target = hazzardAttributes.target.everyone) => {
+    const hazzard = {
+        ...homingHazzard,
+        x: -10,
+        y: -10,
+        ...props,
+        homingTarget: null,
+        previousPos: []
+    };
+    hazzard.t =
+        props.t +
+        (hazzardAttributes.speed.static || hazzardAttributes.speed.slow
+            ? -100
+            : 100);
+    console.log(props);
+    return console.ident(hazzard);
 };
 
 class App extends React.Component {
@@ -230,6 +255,7 @@ class App extends React.Component {
     state = {
         run: true,
         tutorialIndex: null,
+        deployHazzard: [],
         dots: [
             {
                 id: 'player',
@@ -271,6 +297,34 @@ class App extends React.Component {
     tick = () => {
         this.setState(
             R.pipe(
+                s =>
+                    s.dots[0].itemCharge === 90 && s.deployBoost
+                        ? {
+                              ...s,
+                              deployBoost: false,
+                              dots: R.over(
+                                  R.lensProp(0),
+                                  d => ({
+                                      ...d,
+                                      ...hazzardAttributes.affects.speedUp
+                                  }),
+                                  s.dots
+                              )
+                          }
+                        : s,
+                s =>
+                    s.dots[0].itemCharge === 90 && s.deployHazzard.length > 0
+                        ? {
+                              ...s,
+                              deployHazzard: [],
+                              hazzards: [
+                                  ...s.hazzards,
+                                  ...s.deployHazzard.map(i =>
+                                      randomHazzard(s.dots[i])
+                                  )
+                              ]
+                          }
+                        : s,
                 s => ({
                     ...s,
                     hazzards: _.map(s.hazzards, updateTargeting(s.dots))
@@ -374,18 +428,27 @@ class App extends React.Component {
         }
     });
 
+    honk() {
+        console.log('honk');
+    }
+
     render() {
         return (
             <div
                 className="App"
                 tabIndex="0"
-                onKeyDown={e => (
-                    e.preventDefault(),
-                    this.cyclePathIndex(
-                        0,
-                        e.key === 'ArrowRight' ? cycleThree.inc : cycleThree.dec
-                    )
-                )}
+                onKeyDown={e => {
+                    e.preventDefault();
+                    e.key === 'ArrowRight'
+                        ? this.cyclePathIndex(0, cycleThree.inc)
+                        : e.key === 'ArrowLeft'
+                            ? this.cyclePathIndex(0, cycleThree.dec)
+                            : e.key === 'ArrowUp'
+                                ? this.set.deployBoost(true)
+                                : e.key === 'ArrowDown'
+                                    ? this.update.deployHazzard(v => [...v, 0])
+                                    : this.honk();
+                }}
                 onTouchStart={e =>
                     this.cyclePathIndex(
                         0,
