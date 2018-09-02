@@ -1,20 +1,18 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import _ from 'lodash';
-import fp from 'lodash/fp';
-import R from 'ramda';
+import * as R from 'ramda';
 
 import './styles.css';
 
 import car from '../src/assets/blue_car.svg';
 
-var demo = true;
+var demo = false;
 
 console.ident = v => (console.log(v), v);
 
 class FadeText extends React.PureComponent {
     render() {
-        console.log('rerenderes', this.props.val);
         return <div className="fade-out"> {this.props.val} </div>;
     }
 }
