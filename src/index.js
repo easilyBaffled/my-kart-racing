@@ -91,9 +91,10 @@ const updateTargeting = dots => hazzard =>
     hazzard.target === hazzardAttributes.target.homing
         ? {
               ...hazzard,
-              pathIndex: hazzard.homingTarget
-                  ? dots[hazzard.homingTarget].pathIndex
-                  : hazzard.pathIndex
+              pathIndex:
+                  hazzard.homingTarget !== null
+                      ? dots[hazzard.homingTarget].pathIndex
+                      : hazzard.pathIndex
           }
         : hazzard;
 
@@ -116,7 +117,7 @@ const resolveHazzardCollisions = (dots, hazzards = []) => {
         const index = findNearest(h, dots);
 
         if (index !== -1) {
-            hasCollided = h.hazzard;
+            hasCollided = h.hazzard && 500;
             dots = R.over(
                 R.lensProp(index),
                 d => ({ ...d, ...h.affect }),
@@ -151,7 +152,7 @@ const resolveDotCollisions = dots => {
 
 const updateDotPos = paths => dot => {
     const path = paths[dot.pathIndex];
-    console.log(dot, path);
+
     const speed =
         dot.speed === standardSpeed || dot.hazzard
             ? dot.speed
@@ -306,6 +307,7 @@ class App extends React.Component {
                                   R.lensProp(0),
                                   d => ({
                                       ...d,
+                                      itemCharge: 0,
                                       ...hazzardAttributes.affects.speedUp
                                   }),
                                   s.dots
@@ -317,6 +319,18 @@ class App extends React.Component {
                         ? {
                               ...s,
                               deployHazzard: [],
+                              dots: s.deployHazzard.reduce(
+                                  (acc, i) =>
+                                      R.over(
+                                          R.lensProp(i),
+                                          d => ({
+                                              ...d,
+                                              itemCharge: 0
+                                          }),
+                                          acc
+                                      ),
+                                  s.dots
+                              ),
                               hazzards: [
                                   ...s.hazzards,
                                   ...s.deployHazzard.map(i =>
@@ -339,8 +353,17 @@ class App extends React.Component {
                 }),
                 s => ({
                     ...s,
+                    hasCollided: s.hasCollided > 0 ? s.hasCollided - 1 : 0,
                     dots: _.map(s.dots, this.updateDotPos),
                     hazzards: _.map(s.hazzards, this.updateDotPos)
+                }),
+                s => ({
+                    ...s,
+                    deployHazzard: [
+                        ...s.deployHazzard,
+                        this.state.dots[1].itemCharge === 90 ? 1 : null,
+                        this.state.dots[2].itemCharge === 90 ? 2 : null
+                    ].filter(v => v !== null)
                 })
             )
         );
@@ -411,6 +434,13 @@ class App extends React.Component {
                 3100
             );
         }
+        // console.log(this.state.deployHazzard);
+        // if (
+        //     !this.state.deployHazzard.includes(1) &&
+        //     this.state.dots[1].itemCharge === 90
+        // ) {
+        //     this.update.deployHazzard(v => [...v, 1]);
+        // }
     }
 
     set = new Proxy(this, {
