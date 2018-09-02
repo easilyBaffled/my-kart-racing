@@ -113,11 +113,12 @@ circle.dot.mario {
 }
 
 .fade-out {
+    margin-left: 20px;
     opacity: 1;
-    animation: fade-out 1.5s infinite;
+    animation: fade-out 3.5s forwards;
 }
 
-@keyframes pulseCheat {
+@keyframes fade-out {
     100% {
         opacity: 0;
     }

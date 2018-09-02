@@ -292,6 +292,14 @@ const luigi = {
     itemCharge: 0
 };
 
+const lapMappings = {
+    287: 'Perfect',
+    293: 'Great',
+    323: 'Good',
+    352: 'Ok',
+    416: 'Bad'
+};
+
 class App extends React.Component {
     path = React.createRef();
     path2 = React.createRef();
@@ -474,13 +482,17 @@ class App extends React.Component {
         );
 
         if (dots[0].lapTimes > 0 && this.state.dots[0].lapTimes === 0) {
-            this.set.fadeTime(dots[0].lapTimes);
+            const key = Object.keys(lapMappings).reduce((times, t) => {
+                return dots[0].lapTimes > t ? t : times;
+            }, 1000);
+
+            this.set.fadeTime((lapMappings[key] || 'Failed') + ' Lap Time');
         }
 
         if (this.state.hasCollided && !hasCollided)
             setTimeout(() => this.setState({ hasCollided: false }), 3000);
 
-        if (this.state.run && !run) this.tick();
+        //if (this.state.run && !run) this.tick();
 
         if (dots[0].pathIndex !== this.state.dots[0].pathIndex) {
             const { pathIndex, x, y } = this.state.dots[0];
@@ -673,64 +685,11 @@ class App extends React.Component {
                     />
                     {_.map(this.state.dots, Dot)}
                     {_.map(this.state.hazzards.filter(h => h.hazzard), Hazzard)}
-                    <g>
-                        <text x="30" y="30" className="tutorialText">
-                            {this.state.tutorialIndex !== null
-                                ? tutorials[this.state.tutorialIndex].text
-                                : ''}
-                        </text>
-                        {this.state.tutorialIndex !== null &&
-                            _.get(
-                                this.state,
-                                tutorials[this.state.tutorialIndex].target
-                            ) &&
-                            tutorials[this.state.tutorialIndex].target && (
-                                <path
-                                    stroke="#555"
-                                    strokeWidth="1px"
-                                    d={`M33 33 
-                                L 33 55 
-                                L ${
-                                    _.get(
-                                        this.state,
-                                        tutorials[this.state.tutorialIndex]
-                                            .target
-                                    ).x
-                                } 
-                                  ${
-                                      _.get(
-                                          this.state,
-                                          tutorials[this.state.tutorialIndex]
-                                              .target
-                                      ).y
-                                  }`}
-                                />
-                            )}
-                    </g>
+                    <Tutorials
+                        tutorialIndex={this.state.tutorialIndex}
+                        gameState={this.state}
+                    />
                 </svg>
-                {!demo && (
-                    <React.Fragment>
-                        <button onClick={() => this.update.run(v => !v)}>
-                            Run
-                        </button>
-                        <button onClick={() => this.tick()}>>></button>
-                        <details>
-                            <summary>Game State</summary>
-                            <pre>
-                                <code>
-                                    {JSON.stringify(this.state, null, 4)}
-                                </code>
-                                <code>
-                                    {JSON.stringify(
-                                        tutorials[this.state.tutorialIndex],
-                                        null,
-                                        4
-                                    )}
-                                </code>
-                            </pre>
-                        </details>
-                    </React.Fragment>
-                )}
                 <audio
                     ref={this.honkEl}
                     type="audio/mp3"
@@ -744,6 +703,51 @@ class App extends React.Component {
                     src="https://uploads.codesandbox.io/uploads/user/d9629477-fb79-47a2-aaf1-7a691f473c65/Oy1e-384.%20Steppin%20Up_1.mp3"
                 />
             </div>
+        );
+    }
+}
+
+class Tutorials extends React.Component {
+    shouldComponentUpdate({ tutorialIndex }) {
+        return tutorialIndex !== null;
+    }
+
+    render() {
+        const { tutorialIndex } = this.props;
+        if (tutorialIndex === null) return '';
+        return (
+            <g>
+                <text x="30" y="30" className="tutorialText">
+                    {tutorialIndex !== null
+                        ? tutorials[tutorialIndex].text
+                        : ''}
+                </text>
+                {tutorialIndex !== null &&
+                    _.get(
+                        this.props.gameState,
+                        tutorials[tutorialIndex].target
+                    ) &&
+                    tutorials[tutorialIndex].target && (
+                        <path
+                            stroke="#555"
+                            strokeWidth="1px"
+                            d={`M33 33 
+                                L 33 55 
+                                L ${
+                                    _.get(
+                                        this.props.gameState,
+                                        tutorials[tutorialIndex].target
+                                    ).x
+                                } 
+                                  ${
+                                      _.get(
+                                          this.props.gameState,
+                                          tutorials[tutorialIndex].target
+                                      ).y
+                                  }`}
+                        />
+                    )}
+            </g>
         );
     }
 }
@@ -766,7 +770,7 @@ const tutorials = [
     },
     {
         text: 'You want to stay ahead of the other racers',
-        target: 'dots.0'
+        target: ''
     },
     {
         text: `You will also want to switch lanes 
