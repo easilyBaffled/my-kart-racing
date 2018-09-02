@@ -2,6 +2,7 @@ body {
     margin: 0;
     padding: 0;
     background: #dbdbdb;
+    /* overflow: hidden; */
 }
 .App {
     font-family: sans-serif;

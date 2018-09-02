@@ -8,6 +8,8 @@ import './styles.css';
 
 import car from '../src/assets/blue_car.svg';
 
+var demo = true;
+
 console.ident = v => (console.log(v), v);
 
 const shiftPath = (path, shiftAmount) =>
@@ -317,13 +319,6 @@ class App extends React.Component {
                 3100
             );
         }
-
-        // if (tutorialIndex === null && this.state.hazzards.length === 1) {
-        //     setTimeout(
-        //         () => this.update.hazzards(h => h.concat(homingHazzard)),
-        //         Math.max(7000, Math.random() * 1000)
-        //     );
-        // }
     }
 
     set = new Proxy(this, {
@@ -346,11 +341,11 @@ class App extends React.Component {
             <div
                 className="App"
                 tabIndex="0"
-                onKeyDown={({ key, preventdefault }) => (
-                    preventdefault(),
+                onKeyDown={e => (
+                    e.preventDefault(),
                     this.cyclePathIndex(
                         0,
-                        key === 'ArrowRight' ? cycleThree.inc : cycleThree.dec
+                        e.key === 'ArrowRight' ? cycleThree.inc : cycleThree.dec
                     )
                 )}
                 onTouchStart={e =>
@@ -440,21 +435,29 @@ class App extends React.Component {
                             )}
                     </g>
                 </svg>
-                <button onClick={() => this.update.run(v => !v)}>Run</button>
-                <button onClick={() => this.tick()}>>></button>
-                <details>
-                    <summary>Game State</summary>
-                    <pre>
-                        <code>{JSON.stringify(this.state, null, 4)}</code>
-                        <code>
-                            {JSON.stringify(
-                                tutorials[this.state.tutorialIndex],
-                                null,
-                                4
-                            )}
-                        </code>
-                    </pre>
-                </details>
+                {demo && (
+                    <React.Fragment>
+                        <button onClick={() => this.update.run(v => !v)}>
+                            Run
+                        </button>
+                        <button onClick={() => this.tick()}>>></button>
+                        <details>
+                            <summary>Game State</summary>
+                            <pre>
+                                <code>
+                                    {JSON.stringify(this.state, null, 4)}
+                                </code>
+                                <code>
+                                    {JSON.stringify(
+                                        tutorials[this.state.tutorialIndex],
+                                        null,
+                                        4
+                                    )}
+                                </code>
+                            </pre>
+                        </details>
+                    </React.Fragment>
+                )}
             </div>
         );
     }
