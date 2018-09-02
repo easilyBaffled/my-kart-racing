@@ -42,21 +42,47 @@ const pointOnPath = (path, t) => {
     return path.getPointAtLength(t);
 };
 
-const Dot = ({ x, y, id }) => {
+const Dot = ({ x, y, id, previousPos }) => {
     return (
-        <circle
-            key={id}
-            id={id}
-            className="dot"
-            r="13"
-            transform={`translate(${x},${y})`}
-        />
+        <g>
+            {previousPos.map(({ x, y }, i) => (
+                <circle
+                    key={id + i}
+                    id={id}
+                    className={'dot trail ' + id}
+                    r={12 - i}
+                    opacity={Math.max(0.2, 0.6 - i / 10)}
+                    transform={`translate(${x},${y})`}
+                />
+            ))}
+            <circle
+                key={id}
+                id={id}
+                className={'dot ' + id}
+                r="13"
+                transform={`translate(${x + Math.random() * 1.5},${y})`}
+            />
+        </g>
     );
 };
 
-const Hazzard = ({ x, y, attributes }) => {
+const Hazzard = ({ x, y, previousPos, attributes }) => {
     return (
-        <circle className="hazzard" r="8" transform={`translate(${x},${y})`} />
+        <g>
+            {previousPos.map(({ x, y }, i) => (
+                <circle
+                    className={'hazzard trail'}
+                    r={8 - i}
+                    opacity={Math.max(0.2, 0.6 - i / 10)}
+                    transform={`translate(${x},${y})`}
+                />
+            ))}
+            <circle
+                className="hazzard"
+                r="8"
+                transform={`translate(${x},${y})`}
+            />
+        </g>
     );
 };
 
@@ -134,6 +160,10 @@ const updateDotPos = paths => dot => {
 
     return {
         ...dot,
+        previousPos: [
+            { x: dot.x, y: dot.y },
+            ...dot.previousPos.slice(+(!dot.hazzard && Math.random() < 0.19), 7)
+        ],
         speed,
         t,
         laps: dot.t + speed > path.getTotalLength() ? dot.laps + 1 : dot.laps,
@@ -170,7 +200,8 @@ const boostPad = {
     x: 370,
     y: 550,
     affect: hazzardAttributes.affects.speedUp,
-    speed: hazzardAttributes.speed.static
+    speed: hazzardAttributes.speed.static,
+    previousPos: []
 };
 
 const homingHazzard = {
@@ -182,7 +213,8 @@ const homingHazzard = {
     x: 622,
     y: 330,
     affect: hazzardAttributes.affects.slowDown,
-    speed: hazzardAttributes.speed.fast
+    speed: hazzardAttributes.speed.fast,
+    previousPos: []
 };
 
 class App extends React.Component {
@@ -206,7 +238,9 @@ class App extends React.Component {
                 y: 200,
                 t: 1300,
                 speed: 0.05,
-                laps: -1
+                laps: -1,
+                previousPos: [],
+                itemCharge: 0
             },
             {
                 id: 'mario',
@@ -215,7 +249,9 @@ class App extends React.Component {
                 y: 215,
                 t: 0,
                 speed: 0.01,
-                laps: 0
+                laps: 0,
+                previousPos: [],
+                itemCharge: 0
             },
             {
                 id: 'luigi',
@@ -224,7 +260,9 @@ class App extends React.Component {
                 y: 185,
                 t: 0,
                 speed: 0.01,
-                laps: 0
+                laps: 0,
+                previousPos: [],
+                itemCharge: 0
             }
         ],
         hazzards: [boostPad]
