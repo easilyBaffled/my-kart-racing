@@ -12,6 +12,13 @@ var demo = true;
 
 console.ident = v => (console.log(v), v);
 
+class FadeText extends React.PureComponent {
+    render() {
+        console.log('rerenderes', this.props.val);
+        return <div className="fade-out"> {this.props.val} </div>;
+    }
+}
+
 const shiftPath = (path, shiftAmount) =>
     path
         .getAttribute('d')
@@ -61,25 +68,31 @@ const Dot = ({ x, y, id, previousPos, itemCharge }) => {
                 className={'dot ' + id}
                 r="13"
                 strokeDashoffset={90 - itemCharge}
-                transform={`translate(${x + Math.random() * 1.5},${y})`}
+                transform={`translate(${x + Math.random() * 2},${y})`}
             />
         </g>
     );
 };
 
-const Hazzard = ({ x, y, previousPos, attributes }) => {
+const Hazzard = ({ x, y, previousPos, attributes, target }) => {
     return (
         <g>
             {previousPos.map(({ x, y }, i) => (
                 <circle
-                    className={'hazzard trail'}
+                    className={`hazzard trail ${
+                        target === hazzardAttributes.target.homing
+                            ? 'homing'
+                            : ''
+                    }`}
                     r={8 - i}
                     opacity={Math.max(0.2, 0.6 - i / 10)}
                     transform={`translate(${x},${y})`}
                 />
             ))}
             <circle
-                className="hazzard"
+                className={`hazzard ${
+                    target === hazzardAttributes.target.homing ? 'homing' : ''
+                }`}
                 r="8"
                 transform={`translate(${x},${y})`}
             />
@@ -157,13 +170,14 @@ const updateDotPos = paths => dot => {
         dot.speed === standardSpeed || dot.hazzard
             ? dot.speed
             : dot.speed < standardSpeed
-                ? Math.min(dot.speed * 1.02, standardSpeed)
+                ? Math.min(dot.speed * 1.01, standardSpeed)
                 : Math.max(dot.speed * 0.99, standardSpeed);
     const t = R.ifElse(
         v => v > path.getTotalLength(),
         v => v % path.getTotalLength(),
         v => v
     )(dot.t + speed);
+    const newLap = t < dot.t;
 
     return {
         ...dot,
@@ -176,7 +190,8 @@ const updateDotPos = paths => dot => {
         t,
         laps: dot.t + speed > path.getTotalLength() ? dot.laps + 1 : dot.laps,
         lapPercentComplete: t / path.getTotalLength(),
-        ..._.pick(pointOnPath(path, dot.t), ['x', 'y'])
+        ..._.pick(pointOnPath(path, dot.t), ['x', 'y']),
+        lapTimes: dot.lapTimes !== null && (newLap ? 0 : dot.lapTimes + 1)
     };
 };
 
@@ -184,7 +199,7 @@ const hazzardAttributes = {
     speed: {
         static: 0,
         slow: standardSpeed / 2,
-        normal: standardSpeed / 2,
+        normal: standardSpeed,
         fast: standardSpeed * 2
     },
     target: {
@@ -232,21 +247,57 @@ const randomHazzard = (props, target = hazzardAttributes.target.everyone) => {
         y: -10,
         ...props,
         homingTarget: null,
-        previousPos: []
+        previousPos: [],
+        speed: _.sample(hazzardAttributes.speed)
     };
+
+    const isHoming =
+        hazzard.speed !== hazzardAttributes.speed.static &&
+        props.id !== 'player' &&
+        Math.random() > 0.8;
+
+    if (isHoming) {
+        hazzard.target = hazzardAttributes.target.homing;
+        hazzard.homingTarget = _.sample([0, 1, 2]);
+    }
+
     hazzard.t =
         props.t +
         (hazzardAttributes.speed.static || hazzardAttributes.speed.slow
             ? -100
             : 100);
-    console.log(props);
-    return console.ident(hazzard);
+    return hazzard;
+};
+
+const mario = {
+    id: 'mario',
+    pathIndex: 1,
+    x: 495,
+    y: 215,
+    t: 900,
+    speed: standardSpeed,
+    laps: 0,
+    previousPos: [],
+    itemCharge: 0
+};
+const luigi = {
+    id: 'luigi',
+    pathIndex: 2,
+    x: 465,
+    y: 185,
+    t: 750,
+    speed: standardSpeed,
+    laps: 0,
+    previousPos: [],
+    itemCharge: 0
 };
 
 class App extends React.Component {
     path = React.createRef();
     path2 = React.createRef();
     path3 = React.createRef();
+    honkEl = React.createRef();
+    engineSoundEl = React.createRef();
 
     dotLense = (...args) => R.lensPath(['dots', ...args]);
 
@@ -257,39 +308,19 @@ class App extends React.Component {
         run: true,
         tutorialIndex: null,
         deployHazzard: [],
+        deployBoost: [],
         dots: [
             {
                 id: 'player',
                 pathIndex: 0,
                 x: 480,
                 y: 200,
-                t: 1300,
+                t: 1750,
                 speed: 0.05,
                 laps: -1,
                 previousPos: [],
-                itemCharge: 0
-            },
-            {
-                id: 'mario',
-                pathIndex: 1,
-                x: 495,
-                y: 215,
-                t: 0,
-                speed: 0.01,
-                laps: 0,
-                previousPos: [],
-                itemCharge: 0
-            },
-            {
-                id: 'luigi',
-                pathIndex: 2,
-                x: 465,
-                y: 185,
-                t: 0,
-                speed: 0.01,
-                laps: 0,
-                previousPos: [],
-                itemCharge: 0
+                itemCharge: 0,
+                lapTimes: 0
             }
         ],
         hazzards: [boostPad]
@@ -299,23 +330,28 @@ class App extends React.Component {
         this.setState(
             R.pipe(
                 s =>
-                    s.dots[0].itemCharge === 90 && s.deployBoost
+                    s.deployBoost.length > 0
                         ? {
                               ...s,
-                              deployBoost: false,
-                              dots: R.over(
-                                  R.lensProp(0),
-                                  d => ({
-                                      ...d,
-                                      itemCharge: 0,
-                                      ...hazzardAttributes.affects.speedUp
-                                  }),
+                              deployBoost: [],
+                              dots: s.deployBoost.reduce(
+                                  (acc, i) =>
+                                      R.over(
+                                          R.lensProp(i),
+                                          d => ({
+                                              ...d,
+                                              itemCharge: 0,
+                                              ...hazzardAttributes.affects
+                                                  .speedUp
+                                          }),
+                                          acc
+                                      ),
                                   s.dots
                               )
                           }
                         : s,
                 s =>
-                    s.dots[0].itemCharge === 90 && s.deployHazzard.length > 0
+                    s.deployHazzard.length > 0
                         ? {
                               ...s,
                               deployHazzard: [],
@@ -357,14 +393,47 @@ class App extends React.Component {
                     dots: _.map(s.dots, this.updateDotPos),
                     hazzards: _.map(s.hazzards, this.updateDotPos)
                 }),
-                s => ({
-                    ...s,
-                    deployHazzard: [
-                        ...s.deployHazzard,
-                        this.state.dots[1].itemCharge === 90 ? 1 : null,
-                        this.state.dots[2].itemCharge === 90 ? 2 : null
-                    ].filter(v => v !== null)
-                })
+                s => {
+                    if (s.tutorialIndex === null || s.tutorialIndex > 6)
+                        return s;
+                    return {
+                        ...s,
+                        dots: _.map(s.dots, d => ({ ...d, itemCharge: 0 }))
+                    };
+                },
+                s => {
+                    if (s.tutorialIndex !== null) return s;
+                    const deployMario =
+                        Math.random() > 0.9 &&
+                        this.state.dots[1].itemCharge === 90;
+                    const [marioBoost, marioHazzard] = !deployMario
+                        ? [null, null]
+                        : Math.random() > 0.3
+                            ? [1, null]
+                            : [null, 1];
+
+                    const deployLuigi =
+                        Math.random() > 0.9 &&
+                        this.state.dots[2].itemCharge === 90;
+                    const [luigiBoost, luigiHazzard] = !deployLuigi
+                        ? [null, null]
+                        : Math.random() > 0.3
+                            ? [2, null]
+                            : [null, 2];
+                    return {
+                        ...s,
+                        deployBoost: [
+                            ...s.deployBoost,
+                            marioBoost,
+                            luigiBoost
+                        ].filter(v => v !== null),
+                        deployHazzard: [
+                            ...s.deployBoost,
+                            marioHazzard,
+                            luigiHazzard
+                        ].filter(v => v !== null)
+                    };
+                }
             )
         );
         this.state.run && setTimeout(this.tick, 16);
@@ -399,6 +468,15 @@ class App extends React.Component {
     }
 
     componentDidUpdate(_, { run, dots, hasCollided, tutorialIndex }) {
+        this.engineSoundEl.current.playbackRate = Math.min(
+            1.2,
+            Math.max(0.7, dots[0].speed / standardSpeed)
+        );
+
+        if (dots[0].lapTimes > 0 && this.state.dots[0].lapTimes === 0) {
+            this.set.fadeTime(dots[0].lapTimes);
+        }
+
         if (this.state.hasCollided && !hasCollided)
             setTimeout(() => this.setState({ hasCollided: false }), 3000);
 
@@ -415,6 +493,10 @@ class App extends React.Component {
             this.setState(R.set(this.dotLense(0, 't'), nearestSegment.length));
         }
 
+        if (this.state.tutorialIndex > 2 && tutorialIndex === 2) {
+            this.update.dots(v => [...v, mario, luigi]);
+        }
+
         if (
             this.state.tutorialIndex !== null &&
             this.state.tutorialIndex !== tutorialIndex
@@ -423,24 +505,17 @@ class App extends React.Component {
                 () =>
                     this.setState(s => ({
                         tutorialIndex:
-                            s.tutorialIndex + 1 === 10
+                            s.tutorialIndex + 1 === 15
                                 ? null
                                 : s.tutorialIndex + 1,
                         hazzards:
-                            s.tutorialIndex + 1 === 8
+                            s.tutorialIndex + 1 === 11
                                 ? this.state.hazzards.concat(homingHazzard)
                                 : this.state.hazzards
                     })),
-                3100
+                3500
             );
         }
-        // console.log(this.state.deployHazzard);
-        // if (
-        //     !this.state.deployHazzard.includes(1) &&
-        //     this.state.dots[1].itemCharge === 90
-        // ) {
-        //     this.update.deployHazzard(v => [...v, 1]);
-        // }
     }
 
     set = new Proxy(this, {
@@ -459,35 +534,61 @@ class App extends React.Component {
     });
 
     honk() {
-        console.log('honk');
+        this.honkEl.current.play();
+    }
+
+    handleTouch({ clientX, clientY }) {
+        if (clientY === this.state.touch.clientY) {
+            clientX > document.body.clientWidth / 2
+                ? this.cyclePathIndex(0, cycleThree.inc)
+                : this.cyclePathIndex(0, cycleThree.dec);
+        } else {
+            clientY < this.state.touch.clientY
+                ? this.state.dots[0].itemCharge === 90 &&
+                  this.update.deployBoost(v => [...v, 0])
+                : this.state.dots[0].itemCharge === 90 &&
+                  this.update.deployHazzard(v => [...v, 0]);
+        }
     }
 
     render() {
+        const winningRacer = _.find(
+            _.sortBy(this.state.dots, ['laps', 'lapPercentComplete']).reverse(),
+            d => d.laps === 30
+        );
+
+        const evtListeners =
+            'ontouchstart' in document.documentElement
+                ? {
+                      onTouchEnd: e => this.handleTouch(e.changedTouches[0]),
+                      onTouchStart: e => {
+                          e.preventDefault();
+                          this.set.touch(e.touches[0]);
+                      }
+                  }
+                : {
+                      onKeyDown: e => {
+                          e.preventDefault();
+                          e.key === 'ArrowRight'
+                              ? this.cyclePathIndex(0, cycleThree.inc)
+                              : e.key === 'ArrowLeft'
+                                  ? this.cyclePathIndex(0, cycleThree.dec)
+                                  : e.key === 'ArrowUp'
+                                      ? this.state.dots[0].itemCharge === 90 &&
+                                        this.update.deployBoost(v => [...v, 0])
+                                      : e.key === 'ArrowDown'
+                                          ? this.state.dots[0].itemCharge ===
+                                                90 &&
+                                            this.update.deployHazzard(v => [
+                                                ...v,
+                                                0
+                                            ])
+                                          : this.honk();
+                      }
+                  };
+
         return (
-            <div
-                className="App"
-                tabIndex="0"
-                onKeyDown={e => {
-                    e.preventDefault();
-                    e.key === 'ArrowRight'
-                        ? this.cyclePathIndex(0, cycleThree.inc)
-                        : e.key === 'ArrowLeft'
-                            ? this.cyclePathIndex(0, cycleThree.dec)
-                            : e.key === 'ArrowUp'
-                                ? this.set.deployBoost(true)
-                                : e.key === 'ArrowDown'
-                                    ? this.update.deployHazzard(v => [...v, 0])
-                                    : this.honk();
-                }}
-                onTouchStart={e =>
-                    this.cyclePathIndex(
-                        0,
-                        e.touches[0].clientX > document.body.clientWidth / 2
-                            ? cycleThree.inc
-                            : cycleThree.dec
-                    )
-                }
-            >
+            <div className="App" tabIndex="0" {...evtListeners}>
                 <h3 className="positions">
                     {this.state.tutorialIndex === null && (
                         <React.Fragment>
@@ -503,13 +604,47 @@ class App extends React.Component {
                                         {d.laps}
                                     </div>
                                 ))}
+                            <FadeText val={this.state.fadeTime} />
                         </React.Fragment>
                     )}
+                    <h5 className="attribution">
+                        <a href="https://github.com/easilyBaffled">
+                            Development By Danny Michaelis
+                        </a>
+                        <a href="https://opengameart.org/content/steppin-up">
+                            Music By Dan Knoflicek
+                        </a>
+                    </h5>
                 </h3>
+                {winningRacer && <h1>{_.startCase(winningRacer.id)} Won!</h1>}
                 <svg
+                    style={{ display: winningRacer ? 'none' : 'visable' }}
                     viewBox="0 0 700 600"
                     className={this.state.hasCollided ? 'shake' : ''}
                 >
+                    <pattern
+                        id="pattern-checkers"
+                        x="0"
+                        y="0"
+                        width="10"
+                        height="10"
+                        patternUnits="userSpaceOnUse"
+                    >
+                        <rect
+                            class="checker"
+                            x="0"
+                            width="5"
+                            height="5"
+                            y="0"
+                        />
+                        <rect
+                            class="checker"
+                            x="5"
+                            width="5"
+                            height="5"
+                            y="5"
+                        />
+                    </pattern>
                     <path
                         stroke="#0268B1"
                         ref={this.path}
@@ -524,6 +659,13 @@ class App extends React.Component {
                         stroke="#2084CB"
                         ref={this.path3}
                         d="M 600 400 Q 590 100 500 300 Q 350 630 200 300 Q 120 100 100 400 Q 120 480 350 500 Q 580 480 600 400"
+                    />
+                    <rect
+                        x="580"
+                        y="400"
+                        width="90"
+                        height="20"
+                        fill="url(#pattern-checkers)"
                     />
                     <path
                         className="boostpad"
@@ -566,7 +708,7 @@ class App extends React.Component {
                             )}
                     </g>
                 </svg>
-                {demo && (
+                {!demo && (
                     <React.Fragment>
                         <button onClick={() => this.update.run(v => !v)}>
                             Run
@@ -589,6 +731,18 @@ class App extends React.Component {
                         </details>
                     </React.Fragment>
                 )}
+                <audio
+                    ref={this.honkEl}
+                    type="audio/mp3"
+                    src="https://uploads.codesandbox.io/uploads/user/d9629477-fb79-47a2-aaf1-7a691f473c65/-Xyc-Ahooga%20Car%20Horn-SoundBible.com-1499602683%20(1).mp3"
+                />
+                <audio
+                    loop
+                    autoPlay={true}
+                    ref={this.engineSoundEl}
+                    type="audio/wav"
+                    src="https://uploads.codesandbox.io/uploads/user/d9629477-fb79-47a2-aaf1-7a691f473c65/Oy1e-384.%20Steppin%20Up_1.mp3"
+                />
             </div>
         );
     }
@@ -597,10 +751,6 @@ class App extends React.Component {
 const tutorials = [
     {
         text: 'This is you',
-        target: 'dots.0'
-    },
-    {
-        text: 'You want to stay ahead of the other racers',
         target: 'dots.0'
     },
     {
@@ -613,6 +763,10 @@ const tutorials = [
                 ? 'Tap the screen to switch lanes.'
                 : 'Use the arrow keys to switch lanes',
         target: null
+    },
+    {
+        text: 'You want to stay ahead of the other racers',
+        target: 'dots.0'
     },
     {
         text: `You will also want to switch lanes 
@@ -633,12 +787,35 @@ const tutorials = [
         target: 'hazzards.0'
     },
     {
+        text: 'Watch your charge meter. The white ring around your racer.',
+        target: 'dots.0'
+    },
+    {
+        text: 'When it fills up you can use a boost or deploy a hazzard',
+        target: 'dots.0'
+    },
+    {
+        text:
+            'ontouchstart' in document.documentElement
+                ? 'Swipe up for a boost and swipe down for a hazzard'
+                : 'Use the Up Arrow for a boost and the Down Arrow for a hazzard',
+        target: null
+    },
+    {
         text: 'You also need to look out for hazzards.',
         target: 'hazzards.1'
     },
     {
         text: 'They will also slow you down for a bit.',
         target: 'hazzards.1'
+    },
+    {
+        text: 'The first to 30 laps wins!',
+        target: null
+    },
+    {
+        text: 'Thanks for playing!',
+        target: null
     }
 ];
 

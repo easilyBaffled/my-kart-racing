@@ -2,7 +2,8 @@ body {
     margin: 0;
     padding: 0;
     background: #dbdbdb;
-    /* overflow: hidden; */
+    overflow: hidden;
+    position: relative;
 }
 .App {
     font-family: sans-serif;
@@ -19,7 +20,6 @@ svg {
 
 path {
     fill: none;
-    /* stroke: #000; */
     stroke-width: 3px;
 }
 
@@ -45,7 +45,6 @@ circle {
 
 circle.dot.luigi {
     fill: #139334;
-    stroke: #16b65c;
 }
 
 circle.dot.mario {
@@ -58,9 +57,26 @@ circle.dot.mario {
     background: black;
     color: white;
     padding: 10px;
-    height: 10vh;
+    height: 7vh;
     box-sizing: border-box;
     margin: 0px;
+    align-items: center;
+    position: relative;
+}
+
+.attribution {
+    position: absolute;
+    right: 0;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    padding: 5px;
+    font-weight: 300;
+}
+
+.attribution a {
+    color: #049cd8;
 }
 
 .position-dot {
@@ -89,7 +105,22 @@ circle.dot.mario {
     fill: black;
     filter: drop-shadow(16px 16px 20px red);
     animation: pulseCheat 1.5s infinite;
-    stroke-width: 5px;
+    stroke-width: 7px;
+}
+
+.homing {
+    fill: #086421;
+}
+
+.fade-out {
+    opacity: 1;
+    animation: fade-out 1.5s infinite;
+}
+
+@keyframes pulseCheat {
+    100% {
+        opacity: 0;
+    }
 }
 
 @keyframes pulseCheat {
