@@ -115,7 +115,6 @@ circle.dot.mario {
 .fade-out {
     margin-left: 20px;
     opacity: 1;
-    animation: fade-out 3.5s forwards;
 }
 
 @keyframes fade-out {

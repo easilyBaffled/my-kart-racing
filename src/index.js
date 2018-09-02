@@ -11,11 +11,7 @@ var demo = false;
 
 console.ident = v => (console.log(v), v);
 
-class FadeText extends React.PureComponent {
-    render() {
-        return <div className="fade-out"> {this.props.val} </div>;
-    }
-}
+const FadeText = ({ val }) => <div className="fade-out"> {val} </div>;
 
 const shiftPath = (path, shiftAmount) =>
     path
@@ -707,7 +703,7 @@ class App extends React.Component {
 
 class Tutorials extends React.Component {
     shouldComponentUpdate({ tutorialIndex }) {
-        return tutorialIndex !== null;
+        return tutorialIndex !== null || this.props.tutorialIndex === 14;
     }
 
     render() {
