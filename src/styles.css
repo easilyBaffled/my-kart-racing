@@ -13,13 +13,18 @@ body {
 
 svg {
     height: 90vh;
-    width: 90vw;
+    width: 100vw;
 }
 
 path {
     fill: none;
     /* stroke: #000; */
     stroke-width: 3px;
+}
+
+.boostpad {
+    fill: #fbd000;
+    stroke: #dbdbdb;
 }
 
 circle {
@@ -47,6 +52,8 @@ circle.dot:nth-of-type(2) {
     background: black;
     color: white;
     padding: 10px;
+    height: 10vh;
+    box-sizing: border-box;
 }
 
 .position-dot {

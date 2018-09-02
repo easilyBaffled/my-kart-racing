@@ -56,31 +56,6 @@ const Hazzard = ({ x, y, attributes }) => {
     );
 };
 
-const updateDotPos = paths => dot => {
-    const path = paths[dot.pathIndex];
-    const speed =
-        dot.speed === standardSpeed || dot.hazzard
-            ? dot.speed
-            : dot.speed < standardSpeed
-                ? Math.min(dot.speed * 1.02, standardSpeed)
-                : Math.max(dot.speed * 0.08, standardSpeed);
-
-    const t = R.ifElse(
-        v => v > path.getTotalLength(),
-        v => v % path.getTotalLength(),
-        v => v
-    )(dot.t + speed);
-
-    return {
-        ...dot,
-        speed,
-        t,
-        laps: dot.t + speed > path.getTotalLength() ? dot.laps + 1 : dot.laps,
-        lapPercentComplete: t / path.getTotalLength(),
-        ..._.pick(pointOnPath(path, dot.t), ['x', 'y'])
-    };
-};
-
 const updateTargeting = dots => hazzard =>
     hazzard.target === hazzardAttributes.target.homing
         ? { ...hazzard, pathIndex: dots[hazzard.homingTarget].pathIndex }
@@ -105,17 +80,17 @@ const resolveHazzardCollisions = (dots, hazzards = []) => {
         const index = findNearest(h, dots);
 
         if (index !== -1) {
-            hasCollided = true;
-
+            hasCollided = h.hazzard;
             dots = R.over(
                 R.lensProp(index),
                 d => ({ ...d, ...h.affect }),
                 dots
             );
-            return hs;
+            return h.hazzard ? hs : [...hs, h];
         }
         return [...hs, h];
     }, []);
+
     return { hazzards: h, dots, hasCollided };
 };
 
@@ -138,6 +113,31 @@ const resolveDotCollisions = dots => {
     return { dots: updatedDots };
 };
 
+const updateDotPos = paths => dot => {
+    const path = paths[dot.pathIndex];
+    const speed =
+        dot.speed === standardSpeed || dot.hazzard
+            ? dot.speed
+            : dot.speed < standardSpeed
+                ? Math.min(dot.speed * 1.02, standardSpeed)
+                : Math.max(dot.speed * 0.99, standardSpeed);
+
+    const t = R.ifElse(
+        v => v > path.getTotalLength(),
+        v => v % path.getTotalLength(),
+        v => v
+    )(dot.t + speed);
+
+    return {
+        ...dot,
+        speed,
+        t,
+        laps: dot.t + speed > path.getTotalLength() ? dot.laps + 1 : dot.laps,
+        lapPercentComplete: t / path.getTotalLength(),
+        ..._.pick(pointOnPath(path, dot.t), ['x', 'y'])
+    };
+};
+
 const hazzardAttributes = {
     speed: {
         static: 0,
@@ -155,6 +155,18 @@ const hazzardAttributes = {
         slowDown: { speed: standardSpeed / 4 },
         shield: 1000
     }
+};
+
+const boostPad = {
+    hazzard: false,
+    target: hazzardAttributes.target.anyone,
+    homingTarget: null,
+    pathIndex: 1,
+    t: 1500,
+    x: 370,
+    y: 550,
+    affect: hazzardAttributes.affects.speedUp,
+    speed: hazzardAttributes.speed.static
 };
 
 const homingHazzard = {
@@ -211,7 +223,7 @@ class App extends React.Component {
                 laps: 0
             }
         ],
-        hazzards: []
+        hazzards: [boostPad]
     };
 
     tick = () => {
@@ -300,7 +312,7 @@ class App extends React.Component {
                                 ? this.state.hazzards.concat(homingHazzard)
                                 : this.state.hazzards
                     })),
-                4000
+                3000
             );
         }
     }
@@ -340,25 +352,24 @@ class App extends React.Component {
                     )
                 }
             >
-                <button onClick={() => this.update.run(v => !v)}>Run</button>
-                <button onClick={() => this.tick()}>>></button>
-                {this.state.tutorialIndex === null && (
-                    <h3 className="positions">
-                        Positions by Lap:{' '}
-                        {_
-                            .sortBy(this.state.dots, [
-                                'laps',
-                                'lapPercentComplete'
-                            ])
-                            .reverse()
-                            .map((d, i) => (
-                                <div className={`position-dot ${d.id}`}>
-                                    {d.laps}
-                                </div>
-                            ))}
-                    </h3>
-                )}
-
+                <h3 className="positions">
+                    {this.state.tutorialIndex === null && (
+                        <React.Fragment>
+                            Positions by Lap:{' '}
+                            {_
+                                .sortBy(this.state.dots, [
+                                    'laps',
+                                    'lapPercentComplete'
+                                ])
+                                .reverse()
+                                .map((d, i) => (
+                                    <div className={`position-dot ${d.id}`}>
+                                        {d.laps}
+                                    </div>
+                                ))}
+                        </React.Fragment>
+                    )}
+                </h3>
                 <svg
                     viewBox="0 0 700 600"
                     className={this.state.hasCollided ? 'shake' : ''}
@@ -378,8 +389,12 @@ class App extends React.Component {
                         ref={this.path3}
                         d="M 600 400 Q 590 100 500 300 Q 350 630 200 300 Q 120 100 100 400 Q 120 480 350 500 Q 580 480 600 400"
                     />
+                    <path
+                        className="boostpad"
+                        d="M 370 550 l -40 20 l 10 -20 l -10 -20 Z"
+                    />
                     {_.map(this.state.dots, Dot)}
-                    {_.map(this.state.hazzards, Hazzard)}
+                    {_.map(this.state.hazzards.filter(h => h.hazzard), Hazzard)}
                     <g>
                         <text x="30" y="30" className="tutorialText">
                             {this.state.tutorialIndex !== null
@@ -415,6 +430,8 @@ class App extends React.Component {
                             )}
                     </g>
                 </svg>
+                <button onClick={() => this.update.run(v => !v)}>Run</button>
+                <button onClick={() => this.tick()}>>></button>
                 <details>
                     <summary>Game State</summary>
                     <pre>
@@ -469,11 +486,11 @@ const tutorials = [
     },
     {
         text: 'You also need to look out for hazzards.',
-        target: 'hazzards.0'
+        target: 'hazzards.1'
     },
     {
         text: 'They will also slow you down for a bit.',
-        target: 'hazzards.0'
+        target: 'hazzards.1'
     }
 ];
 
