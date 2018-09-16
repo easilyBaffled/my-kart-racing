@@ -6,7 +6,7 @@ The theme was "GENRE, without MECHANIC." Meaning, take something fundamental fro
 
 I chose to take Driving away from Mario Kart. You can play the result [here](https://easilybaffled.itch.io/rail-racing) (be warned there is music). 
 
-#Development
+# Development
 For the time being, other than this file, and any images used in it, 
 I am not going to update the project to preserve the state it was in at the time of submission. 
 That state being, good but messy.
