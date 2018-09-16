@@ -1,5 +1,5 @@
-# Rail Racing
-[Rail Racing by easilyBaffled](https://easilybaffled.itch.io/rail-racing)
+# [ Rail Racing ](https://easilybaffled.itch.io/rail-racing)
+
 I made this ridiculous piece of code in 48 hours as part of the [Game Maker’s Toolkit Jam 2018 - itch.io](https://itch.io/jam/gmtk-2018)
 
 The theme was "GENRE, without MECHANIC." Meaning, take something fundamental from a type of game and remove it. So Mario without Jumping, Tennis without a Ball.
