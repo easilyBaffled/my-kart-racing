@@ -42,17 +42,23 @@ Unlike the player-deployed boost, pads affect anyone who runs over them. CPU opp
 
 ### Expanded Item Roster
 
-The prototype has two item actions: boost and hazard. v2 adds a third item type drawn randomly when the charge meter fills, giving the player something to manage beyond a binary choice.
+When the charge meter fills, the player draws one item. The draw is weighted by race position — racers further behind get higher odds of powerful items. The player holds the item until they choose to use it.
 
-**New items:**
+**Full item table:**
 
-| Item | Effect |
-|---|---|
-| **Shield** | Absorbs the next incoming hazard. Single use. Visible on the racer while active. |
-| **Oil Slick** | Drops a persistent hazard on the player's current lane. Anyone passing through it — including the player — gets slowed. Fades after a few seconds. |
-| **Fake Boost Pad** | Places a decoy that looks like a boost pad but slows whoever hits it. |
+| Item | Effect | Weight (1st → last) |
+|---|---|---|
+| **Boost** | Short speed burst | High → High |
+| **Homing Hazard** | Tracks a target racer, slows on hit | High → Medium |
+| **Shield** | Absorbs the next incoming hazard. Visible as a glow on the racer while active. | Medium → Medium |
+| **Oil Slick** | Drops a persistent slow-zone on the player's current lane. The deployer is immune; everyone else is not. Fades after a few seconds. | Medium → High |
+| **Fake Boost Pad** | Places a decoy with a subtle visual difference from a real pad. Slows whoever hits it. | Medium → High |
+| **Lane Lock** | Forces a target opponent to stay in their current lane for a few seconds — they can't switch. | Low → High |
+| **Speed Steal** | Siphons speed from the racer directly ahead and transfers it to you. Only works if someone is in front of you in the same lane. | Low → High |
+| **EMP** | Knocks the held item out of every other racer's hand. They keep their charge meter progress but lose the drawn item. | Very Low → High |
+| **Ghost** | Brief invincibility — you pass through hazards and other racers without collision for a few seconds. | Very Low → High |
 
-The existing boost (speed up) and homing hazard remain. The player now holds one item at a time and chooses when to use it, rather than deploying immediately on charge.
+Items are designed around the core constraint: the most impactful ones affect lane decisions (Oil Slick forces avoidance, Lane Lock restricts switching, Fake Boost Pad punishes greed) rather than just modifying speed directly.
 
 ---
 
@@ -62,6 +68,14 @@ Prototype collisions just nudge speeds. v2 makes contact feel like contact.
 
 - **Sideswipe:** Two racers in the same lane collide when one catches the other. The trailing racer bounces to an adjacent lane if one is free; if not, they slow sharply.
 - **Hazard hit:** Being struck by a hazard now has a brief recovery window — the racer moves at reduced speed and cannot switch lanes for a moment, making the hit feel punishing rather than just a speed tax.
+
+---
+
+### Field Size
+
+v2 races 6 racers: the player plus 5 CPU opponents. The larger field makes the track feel alive — there are always racers ahead to slipstream, hazards to dodge, and position changes happening somewhere on screen. It also makes item targeting a real decision: do you hit the leader or protect yourself from the pack behind you?
+
+CPU opponents are named and have distinct visual identities (see Racer Sprites).
 
 ---
 
@@ -100,21 +114,23 @@ Particles are cosmetic only and should not obscure the track or other racers.
 
 ### Hazard Visuals
 
-Each hazard type gets a distinct look so the player can identify the threat before it hits.
+Each item and hazard type gets a distinct look so the player can read the situation before reacting.
 
-| Hazard | Visual |
+| Item / Hazard | Visual |
 |---|---|
 | Homing hazard | Pulsing, pointed shape that visibly rotates toward its target |
 | Non-homing hazard | Flat, tumbling shape — clearly drifting, not tracking |
-| Oil slick | Spreading iridescent patch on the lane |
-| Fake boost pad | Identical to a real boost pad until hit |
+| Oil slick | Spreading iridescent patch on the lane surface |
+| Fake boost pad | Nearly identical to a real boost pad — slightly duller color, barely perceptible |
 | Shield | Soft glow around the protected racer |
+| Lane lock | A brief flashing border on the locked racer indicating they can't switch |
+| Speed steal | A visible beam or arc connecting thief to target while active |
+| EMP | Shockwave ring expanding outward from the deployer |
+| Ghost | Racer becomes semi-transparent; hazards visibly pass through them |
 
 ---
 
 ### Speed Feedback
-
-The game currently gives no visual indication of how fast a racer is moving relative to standard speed.
 
 - At high speed (boost active): slight motion blur on the racer, the trail lengthens, camera zooms out slightly to reveal more track ahead
 - At low speed (hazard penalty): racer visual desaturates slightly, trail shortens, camera zooms in
@@ -122,9 +138,17 @@ The game currently gives no visual indication of how fast a racer is moving rela
 
 ---
 
+### Slipstream Indicator
+
+When the player is in a slipstream, a UI indicator appears near the racer showing the draft is active. It intensifies as the effect strengthens. No airflow animation on the track itself — the indicator is enough without adding visual noise to an already busy screen.
+
+---
+
 ### Track Environments
 
-Each of the 3 tracks has a distinct visual theme that affects background color, lane styling, and boost pad appearance — but not readability. Track elements that the player needs to react to (hazards, boost pads, other racers) always have the same contrast priority regardless of theme.
+Tracks are abstract and minimalist — no named environments or illustrated scenery. Each track is distinguished by its color palette and lane styling: different background color, lane line weight, and boost pad color treatment. The geometry of the track is the identity, not a theme.
+
+Readability is never sacrificed for aesthetics. Hazards, boost pads, and racers always have the same contrast priority regardless of which track is active.
 
 ---
 
@@ -143,8 +167,6 @@ These features are in v2 but not the focus of this cycle. Specs are minimal.
 
 ## Open Questions
 
-1. **Item randomness:** Should item draws be fully random, or weighted by race position (losing racers get better items)? Position-weighting is more fair but less legible.
-2. **Oil slick self-damage:** Should the player who dropped the oil slick be immune to it? Makes it easier to use but removes a risk dynamic.
-3. **Fake boost pad tells:** Should the fake pad have a very subtle visual difference that expert players can learn to spot? Or is it a pure bluff with no tell?
-4. **Slipstream visibility:** How do we show the player they're in a slipstream? Options: airflow lines behind the leading racer, a UI indicator, an audio pitch shift.
-5. **Track themes:** Abstract/minimalist or named environments (desert, city, forest)?
+1. **EMP targeting:** Does EMP affect the player's own held item, or only opponents? Affecting yourself adds risk but could feel unfair.
+2. **Ghost + sideswipe:** Does Ghost immunity extend to sideswipe collisions, or only hazards? Full immunity makes it very powerful; partial keeps lane switching risky even while ghosted.
+3. **Lane Lock target selection:** Does the player choose who to lock, or does it auto-target the racer directly ahead? Choice is more satisfying; auto-target is faster to use under pressure.
