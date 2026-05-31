@@ -116,9 +116,9 @@ Each hazard type gets a distinct look so the player can identify the threat befo
 
 The game currently gives no visual indication of how fast a racer is moving relative to standard speed.
 
-- At high speed (boost active): slight motion blur on the racer, the trail lengthens
-- At low speed (hazard penalty): racer visual desaturates slightly, trail shortens
-- Returning to standard speed: smooth transition back to baseline
+- At high speed (boost active): slight motion blur on the racer, the trail lengthens, camera zooms out slightly to reveal more track ahead
+- At low speed (hazard penalty): racer visual desaturates slightly, trail shortens, camera zooms in
+- Returning to standard speed: smooth transition back to baseline on all three effects
 
 ---
 
