@@ -12,156 +12,139 @@ Rail Racing is a browser-based racing game originally built for the 2018 GMTK Ga
 
 ---
 
-## Goals
+## Design Pillars
 
-1. **Make the core loop feel complete** — tight controls, readable visuals, meaningful audio feedback.
-2. **Be fully playable on mobile** — touch is a first-class input, not an afterthought.
-3. **Give players a reason to come back** — track variety, difficulty options, local best times.
+These define what the game is. New mechanics must fit within them.
 
-### Non-goals for v2
-
-- Multiplayer over the network
-- A track editor
-- Account systems or cloud saves
-- Monetization
+- **Lane switching is the only player control.** Three lanes, wrap-around, left/right only. Speed is never directly controlled.
+- **Passive charging, active choice.** The charge meter fills on its own. The interesting decision is what you do when it's full.
+- **Position is everything.** Lane, proximity to opponents, and track position all matter. Reading the race and reacting is the skill.
 
 ---
 
-## User Stories
+## New Mechanics
 
-| # | As a… | I want to… | So that… |
-|---|--------|------------|----------|
-| 1 | new player | understand the controls in under 30 seconds | I can start having fun immediately |
-| 2 | returning player | pick a difficulty | the CPU feels like a real opponent, not a slot machine |
-| 3 | mobile player | swipe reliably to switch lanes and deploy items | the game is fully playable without a keyboard |
-| 4 | competitive player | see my best lap times saved locally | I have something to beat next session |
-| 5 | casual player | choose from multiple tracks | each session feels different |
-| 6 | any player | see car shapes moving along the track | the game reads immediately as a race |
-| 7 | any player | hear sound effects for collisions and hazards | audio confirms what's happening on screen |
+### Slipstream
+
+Following directly behind another racer gives a small, automatic speed boost. The closer and longer you trail, the stronger the effect. Breaking out of the slipstream to overtake costs you that boost — so there's a genuine strategic question about when to make the move.
+
+This makes lane-switching meaningful even when no hazards are active. It also makes the CPU opponents dangerous to be behind, not just in front of.
 
 ---
 
-## Core Mechanics
+### Boost Pads
 
-These are the design pillars v2 is built around. They come from the prototype and are not up for debate — they define what the game is.
+Fixed positions on each track where a speed boost is available — but only if you're in the right lane at the right moment. They're visible in advance, so hitting one is a skill reward, not luck.
 
-- **Lane switching is the only player control.** Three lanes, wrap-around, left/right input only. Speed is not player-controlled.
-- **Dual power-up actions.** A charge meter fills passively over time. When full, the player chooses: deploy boost (speed up) or deploy hazard (slow an opponent).
-- **Hazards have two behaviors: homing and non-homing.** Homing hazards track a target; non-homing travel in a straight line.
-- **Racer-to-racer collision adjusts speed.** The trailing racer accelerates slightly; the leading racer slows. Both return to standard speed over time.
-- **Lap-based racing with time ratings.** Each completed lap is rated (Perfect / Great / Good / Ok / Bad / Failed) based on how long it took. Ratings are calibrated per track.
-- **Motion trail.** Each racer renders its last several positions at fading opacity.
-- **Rankings update live** based on laps completed and current lap percentage.
+Unlike the player-deployed boost, pads affect anyone who runs over them. CPU opponents will go for them too.
 
 ---
 
-## Feature Specifications
+### Expanded Item Roster
 
-### 1. Car Sprites
+The prototype has two item actions: boost and hazard. v2 adds a third item type drawn randomly when the charge meter fills, giving the player something to manage beyond a binary choice.
 
-Each racer is a distinct vehicle shape — car, truck, leaf — that rotates to face the direction of travel. The motion trail renders ghost copies of the sprite at decreasing opacity. Hazard objects look different from racers.
+**New items:**
 
-**Out of scope:** user-selectable skins.
-
----
-
-### 2. Tracks
-
-- Ship with **3 named tracks**, each with a distinct layout (e.g., tight turns, long straights, figure-8)
-- Track is selected before the race
-- Each track has its own lap count and lap-time rating thresholds
-
----
-
-### 3. Difficulty
-
-| Difficulty | CPU item frequency | CPU targeting | CPU speed |
-|---|---|---|---|
-| Easy | Low; items rarely aimed well | Never homes on the player | Slightly below standard |
-| Normal | Moderate | Occasionally homes on the player | Standard |
-| Hard | High; items better timed | Usually homes on the player | Slightly above standard |
-
-CPU opponents on Hard can switch lanes to block or overtake. Difficulty selection persists between sessions.
-
----
-
-### 4. Menus
-
-```
-Main Menu
-├── Race
-│   ├── Track select (3 thumbnails)
-│   ├── Difficulty select (Easy / Normal / Hard)
-│   └── Start Race
-├── Best Times
-└── How to Play
-```
-
-**Race end screen:**
-- Final standings (1st / 2nd / 3rd)
-- Player's best lap time for the race, flagged if it's a new personal best
-- Actions: Race Again | Change Track | Main Menu
-
----
-
-### 5. Local Leaderboards
-
-- Best lap time per track, saved on the player's device
-- Best Times screen: track name, best lap time, rating label
-- In-race notification when the player beats their saved best
-
----
-
-### 6. Audio
-
-- Engine sound with dynamic pitch that scales with the player's speed
-- Horn on non-directional keypress
-- Background music
-- Sound effects for: hazard hit, boost pickup, hazard deployed, lap completed, race won, race lost
-
----
-
-### 7. Mobile Controls
-
-Swipe left/right to switch lanes; swipe up/down to deploy items. Short or very slow swipes are ignored to avoid accidental triggers. The charge meter is large enough to read at a glance. The game scales to fill the screen without scrolling.
-
----
-
-### 8. Tutorial
-
-- **How to Play** is a dedicated menu screen with labeled diagrams covering lane switching, the charge meter, boost vs hazard, and collisions
-- First session: a 3-step dismissible overlay at race start (switch lanes → charge fills → deploy an item). Any input skips it.
-- The overlay does not block gameplay
-- Returning players skip the overlay
-
----
-
-## Success Metrics
-
-| Metric | Target |
+| Item | Effect |
 |---|---|
-| Time-to-first-race on desktop | < 15 seconds from page load |
-| Time-to-first-race on mobile | < 20 seconds from page load |
-| Players who complete at least 3 races | > 60% of first-session players |
+| **Shield** | Absorbs the next incoming hazard. Single use. Visible on the racer while active. |
+| **Oil Slick** | Drops a persistent hazard on the player's current lane. Anyone passing through it — including the player — gets slowed. Fades after a few seconds. |
+| **Fake Boost Pad** | Places a decoy that looks like a boost pad but slows whoever hits it. |
+
+The existing boost (speed up) and homing hazard remain. The player now holds one item at a time and chooses when to use it, rather than deploying immediately on charge.
+
+---
+
+### Collision with Consequence
+
+Prototype collisions just nudge speeds. v2 makes contact feel like contact.
+
+- **Sideswipe:** Two racers in the same lane collide when one catches the other. The trailing racer bounces to an adjacent lane if one is free; if not, they slow sharply.
+- **Hazard hit:** Being struck by a hazard now has a brief recovery window — the racer moves at reduced speed and cannot switch lanes for a moment, making the hit feel punishing rather than just a speed tax.
+
+---
+
+### Rubber Band (Hard Difficulty Only)
+
+On Hard, CPU opponents adjust their aggression based on race position. A CPU that's lapping behind the player will target them more aggressively with items. A CPU in the lead will play more defensively, hoarding the shield. This keeps the race feeling contested rather than decided early.
+
+---
+
+## Visual Improvements
+
+### Racer Sprites
+
+Each racer is a distinct vehicle — a car, a truck, a kart — that rotates to face the direction of travel along the track. No more colored circles.
+
+Sprite design principles:
+- Silhouettes that read clearly at small sizes
+- Each racer has a unique shape, not just a color swap
+- The player's vehicle is the most visually distinctive — instantly identifiable in a cluster
+
+---
+
+### Particle Effects
+
+| Trigger | Effect |
+|---|---|
+| Hazard hit | Sparks burst from the struck racer |
+| Boost (item or pad) | Flame trail behind the racer for the duration |
+| Oil slick active | Subtle slick shimmer on the lane surface |
+| Sideswipe collision | Small debris pop between the two racers |
+| Lap completed | Brief confetti burst at the finish line |
+
+Particles are cosmetic only and should not obscure the track or other racers.
+
+---
+
+### Hazard Visuals
+
+Each hazard type gets a distinct look so the player can identify the threat before it hits.
+
+| Hazard | Visual |
+|---|---|
+| Homing hazard | Pulsing, pointed shape that visibly rotates toward its target |
+| Non-homing hazard | Flat, tumbling shape — clearly drifting, not tracking |
+| Oil slick | Spreading iridescent patch on the lane |
+| Fake boost pad | Identical to a real boost pad until hit |
+| Shield | Soft glow around the protected racer |
+
+---
+
+### Speed Feedback
+
+The game currently gives no visual indication of how fast a racer is moving relative to standard speed.
+
+- At high speed (boost active): slight motion blur on the racer, the trail lengthens
+- At low speed (hazard penalty): racer visual desaturates slightly, trail shortens
+- Returning to standard speed: smooth transition back to baseline
+
+---
+
+### Track Environments
+
+Each of the 3 tracks has a distinct visual theme that affects background color, lane styling, and boost pad appearance — but not readability. Track elements that the player needs to react to (hazards, boost pads, other racers) always have the same contrast priority regardless of theme.
+
+---
+
+## Everything Else (Unchanged in Scope)
+
+These features are in v2 but not the focus of this cycle. Specs are minimal.
+
+- **3 tracks** with distinct layouts
+- **3 difficulty levels** with CPU behavior tables as previously defined
+- **Menus:** track select, difficulty select, race-end screen
+- **Local best times** per track, saved on device
+- **Tutorial overlay** for first-time players, skippable
+- **Mobile:** swipe controls, screen scaling
 
 ---
 
 ## Open Questions
 
-1. **Track art direction:** Do tracks get visual themes (desert / city / forest) or stay abstract and minimalist? Themes add polish and scope; minimalism ships faster.
-2. **Item variety:** Two item types (boost + hazard) or three? A third type (shield, freeze, shortcut) adds design space but also balance work.
-3. **Racer count:** 3 racers (player + 2 CPU) or 4? More racers means more chaos and more hazards on screen — could be fun or could be noise.
-4. **Reduced motion:** Screen shake on hazard hit is useful feedback but can be a problem for motion-sensitive players. Add a setting in v2 or defer?
-
----
-
-## Milestones
-
-| Milestone | Deliverables |
-|---|---|
-| M1 — Core | Game loop, core mechanics playable, keyboard and touch input |
-| M2 — Content | 3 tracks, 3 difficulty levels, CPU lane switching on Hard |
-| M3 — Menus | Pre-race menu, race-end screen, How to Play screen |
-| M4 — Polish | Car sprites, full audio, mobile controls |
-| M5 — Persistence | Local leaderboards, saved difficulty, first-run tutorial overlay |
-| M6 — Ship | Testing, performance, deploy |
+1. **Item randomness:** Should item draws be fully random, or weighted by race position (losing racers get better items)? Position-weighting is more fair but less legible.
+2. **Oil slick self-damage:** Should the player who dropped the oil slick be immune to it? Makes it easier to use but removes a risk dynamic.
+3. **Fake boost pad tells:** Should the fake pad have a very subtle visual difference that expert players can learn to spot? Or is it a pure bluff with no tell?
+4. **Slipstream visibility:** How do we show the player they're in a slipstream? Options: airflow lines behind the leading racer, a UI indicator, an audio pitch shift.
+5. **Track themes:** Abstract/minimalist or named environments (desert, city, forest)?
